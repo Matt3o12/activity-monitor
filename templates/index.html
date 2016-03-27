@@ -82,8 +82,14 @@
             </div>
           </div>
 
-          <h2 class="sub-header">Monitors:</h2>
+          <h2 class="sub-header">
+            Monitors: 
+            <a style="float:right;"  href="#" class="btn btn-primary" role="button">Add Monitor</a>
+            <div style="float:clear;"></div>
+          </h2>
+          
           <div class="table-responsive">
+            {{if .}}
             <table class="table table-striped" id="monitors">
               <thead>
                 <tr>
@@ -94,28 +100,19 @@
                 </tr>
               </thead>
               <tbody>
+                {{range $i, $e := .}}
                 <tr>
-                  <td class="num"><a href="#">1</a></td>
-                  <td class="stat"><a href="#">1%</a></td>
-                  <td class="type"><a href="#">sock</a></td>
-                  <td class="name"><a href="#">TCP/UDP Socket</a></td>
+                  <td class="num"><a href="#">{{$i}}</a></td>
+                  <td class="stat"><a href="#">{{$e.Uptime}}</a></td>
+                  <td class="type"><a href="#">{{$e.Type}}</a></td>
+                  <td class="name"><a href="#">{{$e.Name}}</a></td>
                 </tr>
-
-                <tr>
-                  <td class="num"><a href="#">2</a></td>
-                  <td class="stat"><a href="#">50%</a></td>
-                  <td class="type"><a href="#">http</a></td>
-                  <td class="name"><a href="#">HTTP(s) Server</a></td>
-                </tr>
-
-                <tr>
-                  <td class="num"><a href="#">9999</a></td>
-                  <td class="stat"><a href="#">100%</a></td>
-                  <td class="type"><a href="#">ping</a></td>
-                  <td class="name"><a href="#">Server ping</a></td>
-                </tr>
+                {{end}}
               </tbody>
             </table>
+            {{else}}
+            <p>You do not have any monitors, yet</p>
+            {{end}}
           </div>
         </div>
       </div>
