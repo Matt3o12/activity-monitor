@@ -6,6 +6,10 @@ type Monitor struct {
 	Uptime float32
 }
 
+var SupportedTypes = []string{
+	"Socket", "http", "ping",
+}
+
 func makeMonitors() []Monitor {
 	return []Monitor{
 		{"TCP/UDP Socket", "sock", 1},

@@ -1,5 +1,5 @@
 {{define "title-base"}} – Upchecker – Activity Monitor{{end}}
-{{define "base"}}
+{{define "layout"}}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -10,7 +10,7 @@
     <meta name="description" content="Open Source Activity Monitor written in Golang">
     <meta name="author" content="Matt3o12">
 
-    <title>{{block "title" .}}Upchecker – Activity Monitor{{end}}</title>
+    <title>{{template "title"}}</title>
 
     <!-- Bootstrap core CSS -->
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
@@ -39,11 +39,11 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">Dashboard</a>
+          <a class="navbar-brand" href="/">Upchecker</a>
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav navbar-right">
-            <li><a href="#">Dashboard</a></li>
+            <li><a href="/">Dashboard</a></li>
             <li><a href="#">Settings</a></li>
             <li><a href="#">Help</a></li>
           </ul>
@@ -57,7 +57,7 @@
     <div class="container-fluid">
       <div class="row">
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-1 main">
-          {{template "content"}}
+          {{template "content" .}}
         </div>
       </div>
     </div>
