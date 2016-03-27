@@ -1,10 +1,9 @@
 package main
 
 import (
+	"html/template"
 	"log"
 	"net/http"
-
-	"github.com/golang/go/src/text/template"
 )
 
 var err500TemplateNotLoading = []byte(`<!DOCTYPE html><html>
