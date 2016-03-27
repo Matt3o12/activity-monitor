@@ -6,6 +6,10 @@ import (
 	"net/http"
 )
 
+const (
+	htmlContent = "text/html; charset=utf-8"
+)
+
 var err500TemplateNotLoading = []byte(`<!DOCTYPE html><html>
 <head><title>Error 500</title></head>
 <body><h1>Error 500</h1><p>Could not load error template</p></body></html>`)
@@ -14,12 +18,19 @@ var err500TemplateNotExecuting = []byte(`<!DOCTYPE html><html>
 <head><title>Error 500</title></head>
 <body><h1>Error 500</h1><p>Could not execute template.</p></body></html>`)
 
-func handleServerError(org error, w http.ResponseWriter) {
-	if org == nil {
-		return
-	}
+type Handler func(w http.ResponseWriter, r *http.Request) error
 
+func MainHandler(h Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := h(w, r); err != nil {
+			handleServerError(err, w)
+		}
+	}
+}
+
+func handleServerError(org error, w http.ResponseWriter) {
 	log.Println("An unexpected error 500 occured: ", org)
+	w.Header().Set("Content-Type", htmlContent)
 	w.WriteHeader(500)
 	t, err := template.ParseFiles("templates/error500.html")
 	if err != nil {
@@ -34,14 +45,11 @@ func handleServerError(org error, w http.ResponseWriter) {
 	}
 }
 
-func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("New request! :)")
+func dashboardHandler(w http.ResponseWriter, r *http.Request) error {
 	t, err := template.ParseFiles("templates/index.html")
 	if err != nil {
-		handleServerError(err, w)
-		return
+		return err
 	}
 
-	err = t.Execute(w, makeMonitors())
-	handleServerError(err, w)
+	return t.Execute(w, makeMonitors())
 }
