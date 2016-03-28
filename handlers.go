@@ -46,7 +46,7 @@ func IndexHandler(prefix string, h http.HandlerFunc) http.HandlerFunc {
 }
 
 func handleServerError(org error, w http.ResponseWriter) {
-	log.Println("An unexpected error 500 occured: ", org)
+	log.Println("An unexpected error 500 occured:", org)
 	w.Header().Set("Content-Type", htmlContent)
 	w.WriteHeader(500)
 	t, err := template.ParseFiles("templates/error500.html")
@@ -107,6 +107,7 @@ func writeAddMonitorTemplate(w http.ResponseWriter, errMsg string) error {
 }
 
 func handleAddMonitorPost(w http.ResponseWriter, r *http.Request) error {
+	// TODO: actually save the monitor.
 	monitor := new(Monitor)
 	if err := decodeForm(monitor, r); err != nil {
 		// TODO: better input validation (which fields were invalid).
@@ -114,7 +115,7 @@ func handleAddMonitorPost(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	log.Printf("Created a new monitor: %q", monitor)
+	log.Printf("Created (mock) a new monitor: %q", monitor)
 	// TODO: redirect to newly created URL.
 	http.Redirect(w, r, "/", http.StatusFound)
 	return nil
