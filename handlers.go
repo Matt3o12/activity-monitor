@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -26,6 +26,31 @@ var (
 var formDecoder = schema.NewDecoder()
 
 type Handler func(w http.ResponseWriter, r *http.Request) error
+
+type HTTPError struct {
+	Status  int
+	Message string
+}
+
+func (e HTTPError) Error() string {
+	return fmt.Sprintf("%v -- %v", e.Status, e.Message)
+}
+
+func (e HTTPError) WriteToPage(w http.ResponseWriter) {
+	t, err := template.ParseFiles("templates/error.html")
+	// TODO: let the template loader do the error handling.
+	if err != nil {
+		handleServerError(err, w)
+		return
+	}
+
+	if err := t.Execute(w, e); err != nil {
+		handleServerError(err, w)
+		return
+	}
+
+	w.WriteHeader(e.Status)
+}
 
 func MainHandler(h Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +113,7 @@ func handleAddMonitor(w http.ResponseWriter, r *http.Request) error {
 		return handleAddMonitorPost(w, r)
 
 	default:
-		return errors.New("Method not supported")
+		return HTTPError{405, "Method not allowed"}
 	}
 }
 

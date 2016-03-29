@@ -127,3 +127,30 @@ func TestMainHandlerErr(t *testing.T) {
 		t.Errorf("Body: %q does not contain error: '%v'.", b, expectedError)
 	}
 }
+
+func TestHTTPError_Error(t *testing.T) {
+	err := HTTPError{123, "foo bar"}
+	if err.Error() != "123 -- foo bar" {
+		msg := "Error: %q did not formate as expected. Got: %q."
+		t.Errorf(msg, err, err.Error())
+	}
+}
+
+func TestHTTPError_WriteToPage(t *testing.T) {
+	err := HTTPError{501, "This is a test error"}
+	recorder := httptest.NewRecorder()
+	err.WriteToPage(recorder)
+
+	b := strings.TrimSpace(recorder.Body.String())
+	if !strings.Contains(b, "<title>Error 501 – This is a test error</title>") {
+		t.Errorf("Error message and code not in <title>:\n%v\n\n", b)
+	}
+
+	if !strings.Contains(b, "<h1>Error 501</h1>") {
+		t.Errorf("Error code not found in heading <h1>:\n%v\n\n", b)
+	}
+
+	if !strings.Contains(b, "This is a test error<br><br>") {
+		t.Errorf("Error message not found in content before <br>", b)
+	}
+}
