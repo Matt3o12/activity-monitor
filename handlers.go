@@ -44,18 +44,21 @@ func (e HTTPError) WriteToPage(w http.ResponseWriter) {
 		return
 	}
 
+	w.WriteHeader(e.Status)
 	if err := t.Execute(w, e); err != nil {
 		handleServerError(err, w)
 		return
 	}
-
-	w.WriteHeader(e.Status)
 }
 
 func MainHandler(h Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := h(w, r); err != nil {
-			handleServerError(err, w)
+			if httpErr, ok := err.(HTTPError); ok {
+				httpErr.WriteToPage(w)
+			} else {
+				handleServerError(err, w)
+			}
 		}
 	}
 }

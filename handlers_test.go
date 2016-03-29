@@ -43,11 +43,7 @@ func TestIndexHandler(t *testing.T) {
 
 	for _, row := range data {
 		url := "http://server.local" + row.path
-		request, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			log.Fatalf("Could not construct request. Got: %v", err)
-		}
-
+		request := newRequest(t, "GET", url)
 		recorder := httptest.NewRecorder()
 		handlerCalled := false
 		handler := func(w http.ResponseWriter, r *http.Request) {
@@ -86,11 +82,7 @@ func TestMainHandler(t *testing.T) {
 		return nil
 	}
 
-	request, err := http.NewRequest("GET", "http://server.local/", nil)
-	if err != nil {
-		t.Fatalf("Error creating request: %v", err)
-	}
-
+	request := newRequest(t, "GET", "http://server.local/")
 	MainHandler(handler)(recorder, request)
 	if c := recorder.Code; c != http.StatusOK {
 		t.Errorf("Recorded unexpected code: %v (expected: 200)", c)
@@ -109,11 +101,7 @@ func TestMainHandlerErr(t *testing.T) {
 		return expectedError
 	}
 
-	request, err := http.NewRequest("GET", "http://server.local/", nil)
-	if err != nil {
-		t.Fatalf("Could not construct request: %v", err)
-	}
-
+	request := newRequest(t, "GET", "http://server.local/")
 	MainHandler(handler)(recorder, request)
 	if c := recorder.Code; c != http.StatusInternalServerError {
 		t.Errorf("Expected to record server error (500), got: %v", c)
@@ -125,6 +113,34 @@ func TestMainHandlerErr(t *testing.T) {
 
 	if b := recorder.Body.String(); !strings.Contains(b, expectedError.Error()) {
 		t.Errorf("Body: %q does not contain error: '%v'.", b, expectedError)
+	}
+}
+
+func newRequest(t *testing.T, method, url string) *http.Request {
+	if req, err := http.NewRequest(method, url, nil); err != nil {
+		t.Fatalf("Could not construct request: %q.", err)
+		return nil
+	} else {
+		return req
+	}
+}
+
+func TestMainHandlerHTTPErr(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) error {
+		return HTTPError{321, "test httperror"}
+	}
+
+	recorder := httptest.NewRecorder()
+	request := newRequest(t, "GET", "")
+	MainHandler(handler)(recorder, request)
+
+	if c := recorder.Code; c != 321 {
+		t.Errorf("Recorded unexpected code: %v. Expected 321", c)
+	}
+
+	b := strings.TrimSpace(recorder.Body.String())
+	if !strings.Contains(b, "<title>Error 321 – test httperror</title>") {
+		t.Errorf("Did not record body correctly:\n%v\n\n", b)
 	}
 }
 
@@ -140,6 +156,10 @@ func TestHTTPError_WriteToPage(t *testing.T) {
 	err := HTTPError{501, "This is a test error"}
 	recorder := httptest.NewRecorder()
 	err.WriteToPage(recorder)
+
+	if c := recorder.Code; c != 501 {
+		t.Errorf("Recorded unexpected error code: %v. Expected 501", c)
+	}
 
 	b := strings.TrimSpace(recorder.Body.String())
 	if !strings.Contains(b, "<title>Error 501 – This is a test error</title>") {
