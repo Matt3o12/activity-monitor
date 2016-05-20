@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/schema"
 	"github.com/julienschmidt/httprouter"
@@ -30,8 +31,9 @@ var (
 	errorTmpl    = MustTemplate(NewBareboneTemplate("error.html"))
 	error500Tmpl = MustTemplate(NewBareboneTemplate("error500.html"))
 
-	indexTmpl      = MustTemplate(NewTemplate("index.html"))
-	monitorAddTmpl = MustTemplate(NewTemplate("monitors/add.html"))
+	indexTmpl       = MustTemplate(NewTemplate("index.html"))
+	monitorViewTmpl = MustTemplate(NewTemplate("monitors/view.html"))
+	monitorAddTmpl  = MustTemplate(NewTemplate("monitors/add.html"))
 )
 
 type HTTPError struct {
@@ -107,4 +109,24 @@ func addMonitorPostHandler(w http.ResponseWriter, r *http.Request, _ httprouter.
 	log.Printf("Created (mock) a new monitor: %q", monitor)
 	// TODO: redirect to newly created URL.
 	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func viewMonitorHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	// TODO: fetch from real database.
+	monitors := makeMonitors()
+	tw := defaultTW.Configure(monitorViewTmpl, w)
+	name := params.ByName("id")
+	monitorNotFoundErr := HTTPError{
+		Status: 404, Message: "Monitor could not be found",
+	}
+
+	fmt.Println(name, len(monitors))
+	if id, err := strconv.Atoi(name); err != nil || id > len(monitors) {
+		fmt.Println(id)
+		tw = tw.SetError(monitorNotFoundErr)
+	} else {
+		fmt.Println(id, monitors[id])
+		tw = tw.SetTmplArgs(monitors[id])
+	}
+	tw.Execute()
 }

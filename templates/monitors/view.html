@@ -1,0 +1,21 @@
+{{define "content"}}
+<h1 class="page-header">
+	<span class="glyphicon glyphicon-blackboard" aria-hidden="true"></span>
+	<span class="hide">Minitor</span>
+	{{.Name}}
+
+	{{/* Do real checking for the uptime.*/}}
+	{{if ne .Uptime 0.0}}
+	<span style="color:green;">UP<span>
+	{{else}}
+	<span style="color:red;">DOWN</span>
+	{{end}}
+</h1>
+
+	<img src="/static/monitor-example-graph.png" class="img-responsive" alt="Placeholder for upcoming uptime chart.">
+
+{{end}}
+
+{{define "title"}}View Monitor '{{.Name}} {{template "title-base"}}{{end}}
+
+{{template "layout" .}}

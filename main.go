@@ -8,10 +8,12 @@ import (
 )
 
 func main() {
+
 	mux := httprouter.New()
 	mux.ServeFiles("/static/*filepath", http.Dir("static"))
 
 	mux.GET("/", dashboardHandler)
+	mux.GET("/monitors/view/:id", viewMonitorHandler)
 	mux.GET("/monitors/add/", addMonitorGetHandler)
 	mux.POST("/monitors/add/", addMonitorPostHandler)
 
