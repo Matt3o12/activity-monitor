@@ -174,3 +174,34 @@ func TestHTTPError_WriteToPage(t *testing.T) {
 		t.Errorf("Error message not found in content before <br>", b)
 	}
 }
+
+func TestHandleServerError(t *testing.T) {
+	defer shutupLog()()
+	recorder := httptest.NewRecorder()
+	err := errors.New("Test Server Error")
+	handleServerError(err, recorder)
+
+	if recorder.Code != 500 {
+		msg := "Expected to get error code 500, got instead: %v"
+		t.Errorf(msg, recorder.Code)
+	}
+
+	expectedParts := []string{
+		"<h1>Error 500</h1>",
+		"<p>While executing this request, an unexpected error occured. We are really sorry about that</p>",
+		"<code>Test Server Error</code>",
+	}
+
+	body := recorder.Body.String()
+	t.Logf("Response Body: %q", body)
+	for _, msg := range expectedParts {
+		if !strings.Contains(body, msg) {
+			t.Errorf("Part '%q' not found in body.", msg)
+		}
+	}
+
+	expected := "text/html; charset=utf-8"
+	if tp := recorder.HeaderMap.Get("Content-Type"); tp != expected {
+		t.Errorf("Recorded wrong Content Type: %v", tp)
+	}
+}

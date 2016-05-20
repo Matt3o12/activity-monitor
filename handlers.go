@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -21,6 +22,10 @@ var (
 	err500TemplateNotExecuting = []byte(`<!DOCTYPE html><html>
 <head><title>Error 500</title></head>
 <body><h1>Error 500</h1><p>Could not execute template.</p></body></html>`)
+)
+
+var (
+	error500Tmpl = MustTemplate(NewBareboneTemplate("error500.html"))
 )
 
 var formDecoder = schema.NewDecoder()
@@ -77,14 +82,7 @@ func handleServerError(org error, w http.ResponseWriter) {
 	log.Println("An unexpected error 500 occured:", org)
 	w.Header().Set("Content-Type", htmlContent)
 	w.WriteHeader(500)
-	t, err := template.ParseFiles("templates/error500.html")
-	if err != nil {
-		_, _ = w.Write(err500TemplateNotLoading)
-		log.Println("Could not load template.", err)
-		return
-	}
-
-	if err := t.Execute(w, org.Error()); err != nil {
+	if err := error500Tmpl.Execute(w, org.Error()); err != nil {
 		_, _ = w.Write(err500TemplateNotExecuting)
 		log.Println("Error while executing template.", err)
 	}
@@ -100,6 +98,8 @@ func decodeForm(i interface{}, r *http.Request) error {
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) error {
 	t, err := template.ParseFiles("templates/index.html", "templates/layout.html")
+	fmt.Println("ok...")
+	err = errors.New("Test...")
 	if err != nil {
 		return err
 	}
