@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/schema"
+	"github.com/julienschmidt/httprouter"
 )
 
 const (
@@ -77,23 +78,9 @@ func decodeForm(i interface{}, r *http.Request) error {
 	return formDecoder.Decode(i, r.Form)
 }
 
-func dashboardHandler(w http.ResponseWriter, r *http.Request) {
+func dashboardHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	tw := defaultTW.Configure(indexTmpl, w)
 	tw.SetTmplArgs(makeMonitors()).Execute()
-}
-
-func handleAddMonitor(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		writeAddMonitorTemplate(w, "")
-
-	case "POST":
-		handleAddMonitorPost(w, r)
-
-	default:
-		tw := defaultTW.Configure(nil, w)
-		tw.SetError(HTTPError{405, "Method not allowed"}).Execute()
-	}
 }
 
 func writeAddMonitorTemplate(w http.ResponseWriter, errMsg string) {
@@ -104,7 +91,11 @@ func writeAddMonitorTemplate(w http.ResponseWriter, errMsg string) {
 	defaultTW.Configure(monitorAddTmpl, w).SetTmplArgs(data).Execute()
 }
 
-func handleAddMonitorPost(w http.ResponseWriter, r *http.Request) {
+func addMonitorGetHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	writeAddMonitorTemplate(w, "")
+}
+
+func addMonitorPostHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// TODO: actually save the monitor.
 	monitor := new(Monitor)
 	if err := decodeForm(monitor, r); err != nil {

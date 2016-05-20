@@ -3,13 +3,17 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	mux.HandleFunc("/", IndexHandler("/", dashboardHandler))
-	mux.HandleFunc("/monitors/add/", IndexHandler("/monitors/add/", handleAddMonitor))
+	mux := httprouter.New()
+	mux.ServeFiles("/static/*filepath", http.Dir("static"))
+
+	mux.GET("/", dashboardHandler)
+	mux.GET("/monitors/add/", addMonitorGetHandler)
+	mux.POST("/monitors/add/", addMonitorPostHandler)
 
 	server := &http.Server{Addr: ":8092", Handler: mux}
 	if err := server.ListenAndServe(); err != nil {
