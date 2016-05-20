@@ -74,73 +74,12 @@ func TestIndexHandler(t *testing.T) {
 	}
 }
 
-func TestMainHandler(t *testing.T) {
-	recorder := httptest.NewRecorder()
-	handler := func(w http.ResponseWriter, r *http.Request) error {
-		w.WriteHeader(200)
-		w.Write([]byte("called"))
-		return nil
-	}
-
-	request := newRequest(t, "GET", "http://server.local/")
-	MainHandler(handler)(recorder, request)
-	if c := recorder.Code; c != http.StatusOK {
-		t.Errorf("Recorded unexpected code: %v (expected: 200)", c)
-	}
-
-	if b := recorder.Body.String(); b != "called" {
-		t.Errorf("Recorded unkown body: %q.", b)
-	}
-}
-
-func TestMainHandlerErr(t *testing.T) {
-	defer shutupLog()()
-	expectedError := errors.New("unittest error (expected)")
-	recorder := httptest.NewRecorder()
-	handler := func(w http.ResponseWriter, r *http.Request) error {
-		return expectedError
-	}
-
-	request := newRequest(t, "GET", "http://server.local/")
-	MainHandler(handler)(recorder, request)
-	if c := recorder.Code; c != http.StatusInternalServerError {
-		t.Errorf("Expected to record server error (500), got: %v", c)
-	}
-
-	if c := recorder.HeaderMap.Get("Content-Type"); c != htmlContent {
-		t.Errorf("Expected to get HTMLContent, got: %v.", c)
-	}
-
-	if b := recorder.Body.String(); !strings.Contains(b, expectedError.Error()) {
-		t.Errorf("Body: %q does not contain error: '%v'.", b, expectedError)
-	}
-}
-
 func newRequest(t *testing.T, method, url string) *http.Request {
 	if req, err := http.NewRequest(method, url, nil); err != nil {
 		t.Fatalf("Could not construct request: %q.", err)
 		return nil
 	} else {
 		return req
-	}
-}
-
-func TestMainHandlerHTTPErr(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) error {
-		return HTTPError{321, "test httperror"}
-	}
-
-	recorder := httptest.NewRecorder()
-	request := newRequest(t, "GET", "")
-	MainHandler(handler)(recorder, request)
-
-	if c := recorder.Code; c != 321 {
-		t.Errorf("Recorded unexpected code: %v. Expected 321", c)
-	}
-
-	b := strings.TrimSpace(recorder.Body.String())
-	if !strings.Contains(b, "<title>Error 321 – test httperror</title>") {
-		t.Errorf("Did not record body correctly:\n%v\n\n", b)
 	}
 }
 

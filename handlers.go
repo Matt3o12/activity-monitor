@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 
@@ -33,6 +31,9 @@ var (
 
 	errorTmpl    = MustTemplate(NewBareboneTemplate("error.html"))
 	error500Tmpl = MustTemplate(NewBareboneTemplate("error500.html"))
+
+	indexTmpl      = MustTemplate(NewTemplate("index.html"))
+	monitorAddTmpl = MustTemplate(NewTemplate("monitors/add.html"))
 )
 
 var formDecoder = schema.NewDecoder()
@@ -53,18 +54,6 @@ func (e HTTPError) WriteToPage(w http.ResponseWriter) bool {
 
 	// We can't use set error since that would create an infinity loop.
 	return tw.SetStatusCode(e.Status).SetTmplArgs(e).Execute()
-}
-
-func MainHandler(h Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := h(w, r); err != nil {
-			if httpErr, ok := err.(HTTPError); ok {
-				httpErr.WriteToPage(w)
-			} else {
-				handleServerError(err, w)
-			}
-		}
-	}
 }
 
 func IndexHandler(prefix string, h http.HandlerFunc) http.HandlerFunc {
@@ -95,55 +84,43 @@ func decodeForm(i interface{}, r *http.Request) error {
 	return formDecoder.Decode(i, r.Form)
 }
 
-func dashboardHandler(w http.ResponseWriter, r *http.Request) error {
-	t, err := template.ParseFiles("templates/index.html", "templates/layout.html")
-	fmt.Println("ok...")
-	err = errors.New("Test...")
-	if err != nil {
-		return err
-	}
-
-	return t.Execute(w, makeMonitors())
+func dashboardHandler(w http.ResponseWriter, r *http.Request) {
+	tw := defaultTW.Configure(indexTmpl, w)
+	tw.SetTmplArgs(makeMonitors()).Execute()
 }
 
-func handleAddMonitor(w http.ResponseWriter, r *http.Request) error {
+func handleAddMonitor(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		return writeAddMonitorTemplate(w, "")
+		writeAddMonitorTemplate(w, "")
 
 	case "POST":
-		return handleAddMonitorPost(w, r)
+		handleAddMonitorPost(w, r)
 
 	default:
-		return HTTPError{405, "Method not allowed"}
+		tw := defaultTW.Configure(nil, w)
+		tw.SetError(HTTPError{405, "Method not allowed"}).Execute()
 	}
 }
 
-func writeAddMonitorTemplate(w http.ResponseWriter, errMsg string) error {
-	t, err := template.ParseFiles("templates/monitors/add.html", "templates/layout.html")
-	if err != nil {
-		return err
-	}
-
+func writeAddMonitorTemplate(w http.ResponseWriter, errMsg string) {
 	data := struct {
 		Values []string
 		Err    string
 	}{SupportedTypes, errMsg}
-
-	return t.Execute(w, data)
+	defaultTW.Configure(monitorAddTmpl, w).SetTmplArgs(data).Execute()
 }
 
-func handleAddMonitorPost(w http.ResponseWriter, r *http.Request) error {
+func handleAddMonitorPost(w http.ResponseWriter, r *http.Request) {
 	// TODO: actually save the monitor.
 	monitor := new(Monitor)
 	if err := decodeForm(monitor, r); err != nil {
 		// TODO: better input validation (which fields were invalid).
 		writeAddMonitorTemplate(w, "Form data invaild. Please check input")
-		return nil
+		return
 	}
 
 	log.Printf("Created (mock) a new monitor: %q", monitor)
 	// TODO: redirect to newly created URL.
 	http.Redirect(w, r, "/", http.StatusFound)
-	return nil
 }

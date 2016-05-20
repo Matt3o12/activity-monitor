@@ -8,8 +8,8 @@ import (
 func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	mux.HandleFunc("/", IndexHandler("/", MainHandler(dashboardHandler)))
-	mux.HandleFunc("/monitors/add/", IndexHandler("/monitors/add/", MainHandler(handleAddMonitor)))
+	mux.HandleFunc("/", IndexHandler("/", dashboardHandler))
+	mux.HandleFunc("/monitors/add/", IndexHandler("/monitors/add/", handleAddMonitor))
 
 	server := &http.Server{Addr: ":8092", Handler: mux}
 	if err := server.ListenAndServe(); err != nil {
