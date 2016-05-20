@@ -25,6 +25,13 @@ var (
 )
 
 var (
+	err404 = HTTPError{Status: 404, Message: "Page could not be found"}
+)
+
+var (
+	defaultTW = TemplateWriter{ServerErrorHandler: handleServerError}
+
+	errorTmpl    = MustTemplate(NewBareboneTemplate("error.html"))
 	error500Tmpl = MustTemplate(NewBareboneTemplate("error500.html"))
 )
 
@@ -41,19 +48,11 @@ func (e HTTPError) Error() string {
 	return fmt.Sprintf("%v -- %v", e.Status, e.Message)
 }
 
-func (e HTTPError) WriteToPage(w http.ResponseWriter) {
-	t, err := template.ParseFiles("templates/error.html")
-	// TODO: let the template loader do the error handling.
-	if err != nil {
-		handleServerError(err, w)
-		return
-	}
+func (e HTTPError) WriteToPage(w http.ResponseWriter) bool {
+	tw := defaultTW.Configure(errorTmpl, w)
 
-	w.WriteHeader(e.Status)
-	if err := t.Execute(w, e); err != nil {
-		handleServerError(err, w)
-		return
-	}
+	// We can't use set error since that would create an infinity loop.
+	return tw.SetStatusCode(e.Status).SetTmplArgs(e).Execute()
 }
 
 func MainHandler(h Handler) http.HandlerFunc {
@@ -73,7 +72,7 @@ func IndexHandler(prefix string, h http.HandlerFunc) http.HandlerFunc {
 		if r.URL.Path == prefix {
 			h(w, r)
 		} else {
-			http.NotFound(w, r)
+			defaultTW.Configure(nil, w).SetError(err404).Execute()
 		}
 	}
 }

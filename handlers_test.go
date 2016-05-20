@@ -38,7 +38,7 @@ func TestIndexHandler(t *testing.T) {
 
 	var (
 		expectedBodyCalled    = "called"
-		expectedBodyNotCalled = "404 page not found\n"
+		expectedBodyNotCalled = "<title>Error 404 – Page could not be found</title>"
 	)
 
 	for _, row := range data {
@@ -67,8 +67,8 @@ func TestIndexHandler(t *testing.T) {
 				t.Errorf("Unexpected status code: %v %v", c, cond)
 			} else if handlerCalled {
 				t.Errorf("Handler was unexpectedly called %v.", cond)
-			} else if b := recorder.Body.String(); b != expectedBodyNotCalled {
-				t.Errorf("Body Unexpected body: %q %v", b, cond)
+			} else if b := recorder.Body.String(); !strings.Contains(b, expectedBodyNotCalled) {
+				t.Errorf("Body %q expected to contain: %q", b, expectedBodyNotCalled)
 			}
 		}
 	}

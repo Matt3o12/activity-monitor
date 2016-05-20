@@ -4,6 +4,9 @@ import (
 	"errors"
 	html "html/template"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -109,5 +112,121 @@ func TestNewBareboneTemplate(t *testing.T) {
 	// We need to make sure the layout template was NOT loaded.
 	if isTmlpLoaded(htmlTmp, "layout.html") {
 		t.Fatalf("'layout.html' has been loaded, although it was not supposed to.")
+	}
+}
+
+func TestTemplateConfigure(t *testing.T) {
+	handlerCalled := false
+	nullHandler := func(err error, w http.ResponseWriter) {
+		handlerCalled = true
+	}
+	tw := TemplateWriter{ServerErrorHandler: nullHandler}
+
+	tmpl := nullTemplate{}
+	w := httptest.NewRecorder()
+	new := tw.Configure(&tmpl, w)
+
+	if new.Writer != w {
+		t.Errorf("Writer not updated by Configure")
+	}
+
+	if new.Template == nil {
+		t.Errorf("Template not updated by Configure")
+	}
+
+	// The only way to verify ServerErrorHandler's integrity is to call
+	// it and check if bahavior has been changed.
+	new.ServerErrorHandler(nil, nil)
+	if !handlerCalled {
+		t.Errorf("ServerErrorHandler has unexpecedly been changed.")
+	}
+
+	if tw.Writer != nil {
+		t.Errorf("Original TemplateWriter has been changed by Configure")
+	}
+
+	if tw.Template != nil {
+		t.Errorf("Original TemplateWriter has been changed by Configure")
+	}
+}
+
+type mockedTemplate struct {
+	returnError bool
+	called      bool
+	args        interface{}
+	writer      io.Writer
+}
+
+func (t *mockedTemplate) Execute(w io.Writer, args interface{}) error {
+	t.args = args
+	t.writer = w
+	t.called = true
+
+	if t.returnError {
+		return errors.New("Mocked template error")
+	}
+
+	return nil
+}
+
+func assertTemplate(t *testing.T, tmpl *mockedTemplate, w io.Writer, args interface{}) {
+	if !tmpl.called {
+		t.Errorf("Template has not been called.")
+	}
+	if tmpl.writer != w {
+		t.Errorf("Template were not given the correct writer")
+	}
+
+	if tmpl.args != args {
+		t.Errorf("Template were not given the correct args: %q", tmpl.args)
+	}
+}
+
+func TestTemplateWriterExecute(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	tmpl := &mockedTemplate{returnError: false}
+	tw := TemplateWriter{
+		ServerErrorHandler: nil, Writer: recorder, Template: tmpl,
+	}
+	ok := tw.SetStatusCode(301).SetTmplArgs("12542").Execute()
+
+	if !ok {
+		t.Error("Execution expected to be ok")
+	}
+
+	if recorder.Code != 301 {
+		t.Errorf("StatusCode has not been written to the recorder.")
+	}
+
+	htmlType := "text/html; charset=utf-8"
+	if c := recorder.HeaderMap.Get("Content-Type"); c != htmlType {
+		t.Errorf("Template set unexpected type: %v", c)
+	}
+	assertTemplate(t, tmpl, recorder, "12542")
+}
+
+func TestTemplateWriterExecuteError(t *testing.T) {
+	tmpl := &mockedTemplate{returnError: false}
+	recorder := httptest.NewRecorder()
+	tw := TemplateWriter{
+		ServerErrorHandler: nil, Writer: recorder, Template: tmpl,
+	}
+	msg := "Page 'test' could not be found"
+	httpErr := HTTPError{Status: 404, Message: msg}
+	tw.Configure(tmpl, recorder).SetError(httpErr).Execute()
+
+	if tmpl.called {
+		t.Errorf("Mocked template was not supposed to be called.")
+	}
+
+	if recorder.Code != 404 {
+		t.Errorf("Unexpected error code was set: %v", recorder.Code)
+	}
+
+	expected := "<title>Error 404 – Page " +
+		"&#39;test&#39; could not be found</title>"
+
+	if b := recorder.Body.String(); !strings.Contains(b, expected) {
+		t.Errorf("%q not found in body: %q.", expected, b)
 	}
 }
