@@ -13,19 +13,16 @@ const (
 )
 
 var (
-	err500TemplateNotLoading = []byte(`<!DOCTYPE html><html>
-<head><title>Error 500</title></head>
-<body><h1>Error 500</h1><p>Could not load error template</p></body></html>`)
-
 	err500TemplateNotExecuting = []byte(`<!DOCTYPE html><html>
 <head><title>Error 500</title></head>
 <body><h1>Error 500</h1><p>Could not execute template.</p></body></html>`)
-)
 
-var (
 	err404 = HTTPError{Status: 404, Message: "Page could not be found"}
+
+	formDecoder = schema.NewDecoder()
 )
 
+// All template related variables.
 var (
 	defaultTW = TemplateWriter{ServerErrorHandler: handleServerError}
 
@@ -35,10 +32,6 @@ var (
 	indexTmpl      = MustTemplate(NewTemplate("index.html"))
 	monitorAddTmpl = MustTemplate(NewTemplate("monitors/add.html"))
 )
-
-var formDecoder = schema.NewDecoder()
-
-type Handler func(w http.ResponseWriter, r *http.Request) error
 
 type HTTPError struct {
 	Status  int
@@ -52,7 +45,7 @@ func (e HTTPError) Error() string {
 func (e HTTPError) WriteToPage(w http.ResponseWriter) bool {
 	tw := defaultTW.Configure(errorTmpl, w)
 
-	// We can't use set error since that would create an infinity loop.
+	// We can't use SetError since that would create an infinity loop.
 	return tw.SetStatusCode(e.Status).SetTmplArgs(e).Execute()
 }
 

@@ -19,12 +19,6 @@ func fixTemplateNames(templates []string) {
 	}
 }
 
-func checkLength(templates []string) {
-	if len(templates) <= 0 {
-		panic("templates must have at least one argument")
-	}
-}
-
 // A simple template that can be executed.
 type Template interface {
 	Execute(io.Writer, interface{}) error
