@@ -19,7 +19,7 @@ var (
 <head><title>Error 500</title></head>
 <body><h1>Error 500</h1><p>Could not execute template.</p></body></html>`)
 
-	err404 = HTTPError{Status: 404, Message: "Page could not be found"}
+	err404 = StatusError{Status: 404, Message: "Page could not be found"}
 
 	formDecoder = schema.NewDecoder()
 )
@@ -35,22 +35,6 @@ var (
 	monitorViewTmpl = MustTemplate(NewTemplate("monitors/view.html"))
 	monitorAddTmpl  = MustTemplate(NewTemplate("monitors/add.html"))
 )
-
-type HTTPError struct {
-	Status  int
-	Message string
-}
-
-func (e HTTPError) Error() string {
-	return fmt.Sprintf("%v -- %v", e.Status, e.Message)
-}
-
-func (e HTTPError) WriteToPage(w http.ResponseWriter) bool {
-	tw := defaultTW.Configure(errorTmpl, w)
-
-	// We can't use SetError since that would create an infinity loop.
-	return tw.SetStatusCode(e.Status).SetTmplArgs(e).Execute()
-}
 
 func IndexHandler(prefix string, h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +100,7 @@ func viewMonitorHandler(w http.ResponseWriter, r *http.Request, params httproute
 	monitors := makeMonitors()
 	tw := defaultTW.Configure(monitorViewTmpl, w)
 	name := params.ByName("id")
-	monitorNotFoundErr := HTTPError{
+	monitorNotFoundErr := StatusError{
 		Status: 404, Message: "Monitor could not be found",
 	}
 

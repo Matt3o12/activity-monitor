@@ -83,16 +83,16 @@ func newRequest(t *testing.T, method, url string) *http.Request {
 	}
 }
 
-func TestHTTPError_Error(t *testing.T) {
-	err := HTTPError{123, "foo bar"}
+func TestStatusError_Error(t *testing.T) {
+	err := StatusError{123, "foo bar"}
 	if err.Error() != "123 -- foo bar" {
 		msg := "Error: %q did not formate as expected. Got: %q."
 		t.Errorf(msg, err, err.Error())
 	}
 }
 
-func TestHTTPError_WriteToPage(t *testing.T) {
-	err := HTTPError{501, "This is a test error"}
+func TestStatusError_WriteToPage(t *testing.T) {
+	err := StatusError{501, "This is a test error"}
 	recorder := httptest.NewRecorder()
 	err.WriteToPage(recorder)
 

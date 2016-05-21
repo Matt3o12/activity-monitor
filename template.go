@@ -66,7 +66,7 @@ type TemplateWriter struct {
 	statusCode int
 
 	// The error, if any occured
-	err *HTTPError
+	err HTTPError
 
 	// The args for executing the template
 	tmplArgs interface{}
@@ -83,8 +83,8 @@ func (w TemplateWriter) Configure(t Template, writer http.ResponseWriter) Templa
 
 // SetError returns a new TemplateWriter with the given error.
 func (w TemplateWriter) SetError(err HTTPError) TemplateWriter {
-	w.err = &err
-	w.statusCode = err.Status
+	w.err = err
+	w.statusCode = err.HTTPStatus()
 
 	return w
 }

@@ -212,7 +212,7 @@ func TestTemplateWriterExecuteError(t *testing.T) {
 		ServerErrorHandler: nil, Writer: recorder, Template: tmpl,
 	}
 	msg := "Page 'test' could not be found"
-	httpErr := HTTPError{Status: 404, Message: msg}
+	httpErr := StatusError{Status: 404, Message: msg}
 	tw.Configure(tmpl, recorder).SetError(httpErr).Execute()
 
 	if tmpl.called {
