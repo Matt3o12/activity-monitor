@@ -70,7 +70,7 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		Id    int
 		Name  string
 		Type  string
-		Event int
+		Event EventType
 	}{}
 
 	err := NewDatabaseError(db.Model(&Monitor{}).Alias("m").

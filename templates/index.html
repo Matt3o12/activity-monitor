@@ -46,13 +46,12 @@
     <tbody>
       {{range $e := .}}
       <tr>
-		  {{/* TODO: Use real ID. */}}
           <td class="num">
 			  <a href="/monitors/view/{{$e.Id}}">{{$e.Id}}</a>
 		  </td>
 
           <td class="stat">
-			  <a href="/monitors/view/{{$e.Id}}">{{$e.Event}}%</a>
+			  <a href="/monitors/view/{{$e.Id}}">{{$e.Event.ShortName}}</a>
 		  </td>
           
 		  <td class="type">
