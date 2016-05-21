@@ -87,3 +87,37 @@ func TestHandleServerError(t *testing.T) {
 		t.Errorf("Recorded wrong Content Type: %v", tp)
 	}
 }
+
+func TestRedirect(t *testing.T) {
+	testcase := []struct {
+		Location string
+		Status   int
+	}{
+		{"/test.html", 301},
+		{"/index.html", 302},
+		{"/foo/bar/", 303},
+	}
+
+	for _, row := range testcase {
+		recorder := httptest.NewRecorder()
+		request, err := http.NewRequest("GET", "http://localhost/post", nil)
+		if err != nil {
+			t.Fatalf("Could not construct request: %v", err)
+		}
+		redirect := Redirect{
+			Location: row.Location,
+			Status:   row.Status,
+			Request:  request,
+		}
+		redirect.Execute(recorder)
+
+		if l := recorder.HeaderMap.Get("Location"); l != row.Location {
+			t.Errorf("Location: %v, wanted: %v", l, row.Location)
+		}
+
+		if recorder.Code != row.Status {
+			msg := "Status code: %v, wanted: %v"
+			t.Errorf(msg, recorder.Code, row.Status)
+		}
+	}
+}
