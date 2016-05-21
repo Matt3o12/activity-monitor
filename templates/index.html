@@ -44,23 +44,23 @@
       </tr>
     </thead>
     <tbody>
-      {{range $i, $e := .}}
+      {{range $e := .}}
       <tr>
 		  {{/* TODO: Use real ID. */}}
           <td class="num">
-			  <a href="/monitors/view/{{$i}}">{{$i}}</a>
+			  <a href="/monitors/view/{{$e.Id}}">{{$e.Id}}</a>
 		  </td>
 
           <td class="stat">
-			  <a href="/monitors/view/{{$i}}">{{$e.Uptime}}%</a>
+			  <a href="/monitors/view/{{$e.Id}}">{{$e.Event}}%</a>
 		  </td>
           
 		  <td class="type">
-		  	  <a href="/monitors/view/{{$i}}">{{$e.Type}}</a>
+		  	  <a href="/monitors/view/{{$e.Id}}">{{$e.Type}}</a>
 		  </td>
           
 		  <td class="name">
-		  	  <a href="/monitors/view/{{$i}}">{{$e.Name}}</a>
+		  	  <a href="/monitors/view/{{$e.Id}}">{{$e.Name}}</a>
 		  </td>
       </tr>
       {{end}}

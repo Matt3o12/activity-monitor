@@ -66,7 +66,24 @@ func decodeForm(i interface{}, r *http.Request) error {
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	tw := defaultTW.Configure(indexTmpl, w)
-	tw.SetTmplArgs(makeMonitors()).Execute()
+	monitors := []struct {
+		Id    int
+		Name  string
+		Type  string
+		Event int
+	}{}
+
+	err := NewDatabaseError(db.Model(&Monitor{}).Alias("m").
+		Column("m.name", "m.type", "m.id", "l1.event").
+		Join("JOIN monitor_logs l1 ON (m.id = l1.monitor_id)").
+		Join("LEFT OUTER JOIN monitor_logs l2 ON (m.id = l2.monitor_id " +
+		"AND l1.date <= l2.date AND l1.id < l2.id)").
+		Where("l2.id IS NULL").
+		Order("m.id ASC").
+		Limit(50).
+		Select(&monitors))
+
+	tw.SetTmplArgs(monitors).SetError(err).Execute()
 }
 
 func writeAddMonitorTemplate(w http.ResponseWriter, errMsg string) {

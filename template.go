@@ -83,8 +83,10 @@ func (w TemplateWriter) Configure(t Template, writer http.ResponseWriter) Templa
 
 // SetError returns a new TemplateWriter with the given error.
 func (w TemplateWriter) SetError(err HTTPError) TemplateWriter {
-	w.err = err
-	w.statusCode = err.HTTPStatus()
+	if err != nil {
+		w.err = err
+		w.statusCode = err.HTTPStatus()
+	}
 
 	return w
 }
@@ -110,12 +112,12 @@ func (w TemplateWriter) Execute() bool {
 		return w.err.WriteToPage(w.Writer)
 	}
 
+	w.Writer.Header().Set("Content-Type", htmlContent)
 	if w.statusCode != 0 {
 		w.Writer.WriteHeader(w.statusCode)
 	}
 
 	tmpl := w.Template
-	w.Writer.Header().Set("Content-Type", htmlContent)
 	err := tmpl.Execute(w.Writer, w.tmplArgs)
 	if err != nil {
 		w.ServerErrorHandler(err, w.Writer)
