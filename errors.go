@@ -34,10 +34,10 @@ func (e StatusError) HTTPStatus() int {
 
 // WriteToPage writes the error message and the status to the page.
 func (e StatusError) WriteToPage(w http.ResponseWriter) bool {
-	tw := defaultTW.Configure(errorTmpl, w)
+	tw := defaultTW.SetTemplate(errorTmpl)
 
 	// We can't use SetError since that would create an infinity loop.
-	return tw.SetStatusCode(e.Status).SetTmplArgs(e).Execute()
+	return tw.SetStatusCode(e.Status).SetTmplArgs(e).Execute(w)
 }
 
 // DatabaseError is a wrapper for any pg database error
@@ -72,7 +72,7 @@ func (e *DatabaseError) Error() string {
 
 // Writes the error message to the page.
 func (e *DatabaseError) WriteToPage(w http.ResponseWriter) bool {
-	tw := defaultTW.Configure(error500Tmpl, w)
+	tw := defaultTW.SetTemplate(error500Tmpl)
 
-	return tw.SetStatusCode(500).SetTmplArgs(e).Execute()
+	return tw.SetStatusCode(500).SetTmplArgs(e).Execute(w)
 }

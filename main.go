@@ -21,11 +21,19 @@ func main() {
 	mux := httprouter.New()
 	mux.ServeFiles("/static/*filepath", http.Dir("static"))
 
+	get := func(path string, h UptimeCheckerHandler) {
+		mux.GET(path, MainMiddleware(h))
+	}
+
+	post := func(path string, h UptimeCheckerHandler) {
+		mux.POST(path, MainMiddleware(h))
+	}
+
 	// TODO: Add error 404 handler.
-	mux.GET("/", dashboardHandler)
-	mux.GET("/monitors/view/:id", viewMonitorHandler)
-	mux.GET("/monitors/add/", addMonitorGetHandler)
-	mux.POST("/monitors/add/", addMonitorPostHandler)
+	get("/", dashboardHandler)
+	get("/monitors/view/:id", viewMonitorHandler)
+	get("/monitors/add/", addMonitorGetHandler)
+	post("/monitors/add/", addMonitorPostHandler)
 
 	server := &http.Server{Addr: ":8092", Handler: mux}
 	if err := server.ListenAndServe(); err != nil {

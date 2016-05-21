@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,62 +17,6 @@ func shutupLog() func() {
 		log.SetOutput(os.Stderr)
 	}
 }
-
-func TestIndexHandler(t *testing.T) {
-	data := []struct {
-		prefix string
-		path   string
-		found  bool
-	}{
-		{"/", "/", true},
-		{"/test/", "/test/", true},
-		{"/", "/test", false},
-		{"/", "/test.html", false},
-		{"/foo/", "/foo/bar.html", false},
-		{"/foo/bar/", "/foo/bar/", true},
-		{"/foo/bar/", "/foo/bar/home", false},
-		{"/foo/bar/", "/foo/bar/home/", false},
-		{"/foo/bar/", "/foo/bar/home.test", false},
-	}
-
-	var (
-		expectedBodyCalled    = "called"
-		expectedBodyNotCalled = "<title>Error 404 – Page could not be found</title>"
-	)
-
-	for _, row := range data {
-		url := "http://server.local" + row.path
-		request := newRequest(t, "GET", url)
-		recorder := httptest.NewRecorder()
-		handlerCalled := false
-		handler := func(w http.ResponseWriter, r *http.Request) {
-			handlerCalled = true
-			w.Write([]byte("called"))
-		}
-
-		IndexHandler(row.prefix, handler)(recorder, request)
-
-		cond := fmt.Sprintf("for %q, prefix %q", row.path, row.prefix)
-		if row.found {
-			if c := recorder.Code; c != http.StatusOK {
-				t.Errorf("Unexpected status code: '%v' %v.", c, cond)
-			} else if !handlerCalled {
-				t.Errorf("Handler not called %v.", cond)
-			} else if b := recorder.Body.String(); b != expectedBodyCalled {
-				t.Errorf("Invalid body: '%v' %v.", b, cond)
-			}
-		} else {
-			if c := recorder.Code; c != http.StatusNotFound {
-				t.Errorf("Unexpected status code: %v %v", c, cond)
-			} else if handlerCalled {
-				t.Errorf("Handler was unexpectedly called %v.", cond)
-			} else if b := recorder.Body.String(); !strings.Contains(b, expectedBodyNotCalled) {
-				t.Errorf("Body %q expected to contain: %q", b, expectedBodyNotCalled)
-			}
-		}
-	}
-}
-
 func newRequest(t *testing.T, method, url string) *http.Request {
 	if req, err := http.NewRequest(method, url, nil); err != nil {
 		t.Fatalf("Could not construct request: %q.", err)

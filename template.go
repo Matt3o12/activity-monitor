@@ -56,9 +56,6 @@ type TemplateWriter struct {
 	// The template to parse
 	Template Template
 
-	// The writer to write the text to
-	Writer http.ResponseWriter
-
 	// Handler if an error occured while executing the template.
 	ServerErrorHandler ServerErrorHandler
 
@@ -72,12 +69,9 @@ type TemplateWriter struct {
 	tmplArgs interface{}
 }
 
-// Configure sets the Template and Writer and returns a copy with the
-// changed values.
-func (w TemplateWriter) Configure(t Template, writer http.ResponseWriter) TemplateWriter {
-	w.Template = t
-	w.Writer = writer
-
+// SetTemplate returns a new TemplateWriter with the template.
+func (w TemplateWriter) SetTemplate(tmpl Template) TemplateWriter {
+	w.Template = tmpl
 	return w
 }
 
@@ -107,20 +101,20 @@ func (w TemplateWriter) SetTmplArgs(args interface{}) TemplateWriter {
 
 // Execute writes the template (and status code) or error (if set)
 // to the reponse writer.
-func (w TemplateWriter) Execute() bool {
+func (w TemplateWriter) Execute(httpWriter http.ResponseWriter) bool {
 	if w.err != nil {
-		return w.err.WriteToPage(w.Writer)
+		return w.err.WriteToPage(httpWriter)
 	}
 
-	w.Writer.Header().Set("Content-Type", htmlContent)
+	httpWriter.Header().Set("Content-Type", htmlContent)
 	if w.statusCode != 0 {
-		w.Writer.WriteHeader(w.statusCode)
+		httpWriter.WriteHeader(w.statusCode)
 	}
 
 	tmpl := w.Template
-	err := tmpl.Execute(w.Writer, w.tmplArgs)
+	err := tmpl.Execute(httpWriter, w.tmplArgs)
 	if err != nil {
-		w.ServerErrorHandler(err, w.Writer)
+		w.ServerErrorHandler(err, httpWriter)
 	}
 
 	return err == nil

@@ -36,14 +36,42 @@ var (
 	monitorAddTmpl  = MustTemplate(NewTemplate("monitors/add.html"))
 )
 
-func IndexHandler(prefix string, h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == prefix {
-			h(w, r)
-		} else {
-			defaultTW.Configure(nil, w).SetError(err404).Execute()
+// UptimeCheckerHandle is the basic handle for this webpage. Every
+// handle should be a type of it.
+type UptimeCheckerHandler func(r *http.Request, p httprouter.Params) Page
+
+// MainMiddleware should be the first middleware. It calls the Page's
+// Execution function and call further middlewares in the future.
+func MainMiddleware(h UptimeCheckerHandler) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		page := h(r, p)
+		if page != nil {
+			page.Execute(w)
 		}
 	}
+}
+
+// A Page is returned by every view (i.e. handler)
+// and writes the HTML to client or sends a redirect.
+type Page interface {
+	Execute(http.ResponseWriter) bool
+}
+
+// Redirect is a page returned when a redirect should occur
+// (instead of a template for example).
+// Redirect should know the requests since it needs to determine
+// the absolute URL.
+type Redirect struct {
+	Location string
+	Status   int
+	Request  *http.Request
+}
+
+// Execute redirects the user to the given location.
+// Always returns true.
+func (r Redirect) Execute(w http.ResponseWriter) bool {
+	http.Redirect(w, r.Request, r.Location, r.Status)
+	return true
 }
 
 func handleServerError(org error, w http.ResponseWriter) {
@@ -64,8 +92,8 @@ func decodeForm(i interface{}, r *http.Request) error {
 	return formDecoder.Decode(i, r.Form)
 }
 
-func dashboardHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	tw := defaultTW.Configure(indexTmpl, w)
+func dashboardHandler(r *http.Request, _ httprouter.Params) Page {
+	tw := defaultTW.SetTemplate(indexTmpl)
 	monitors := []struct {
 		Id    int
 		Name  string
@@ -83,51 +111,49 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		Limit(50).
 		Select(&monitors))
 
-	tw.SetTmplArgs(monitors).SetError(err).Execute()
+	return tw.SetTmplArgs(monitors).SetError(err)
 }
 
-func writeAddMonitorTemplate(w http.ResponseWriter, errMsg string) {
+func getAddMonitorTemplate(errMsg string) Page {
 	data := struct {
 		Values []string
 		Err    string
 	}{SupportedTypes, errMsg}
-	defaultTW.Configure(monitorAddTmpl, w).SetTmplArgs(data).Execute()
+
+	return defaultTW.SetTemplate(monitorAddTmpl).SetTmplArgs(data)
 }
 
-func addMonitorGetHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	writeAddMonitorTemplate(w, "")
+func addMonitorGetHandler(_ *http.Request, _ httprouter.Params) Page {
+	return getAddMonitorTemplate("")
 }
 
-func addMonitorPostHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func addMonitorPostHandler(r *http.Request, _ httprouter.Params) Page {
 	// TODO: actually save the monitor.
 	monitor := new(Monitor)
 	if err := decodeForm(monitor, r); err != nil {
-		// TODO: better input validation (which fields were invalid).
-		writeAddMonitorTemplate(w, "Form data invaild. Please check input")
-		return
+		// TODO: better input validat (which fields were invalid).
+		return getAddMonitorTemplate("Form data invaild. Please check input")
 	}
 
 	log.Printf("Created (mock) a new monitor: %q", monitor)
 	// TODO: redirect to newly created URL.
-	http.Redirect(w, r, "/", http.StatusFound)
+	return Redirect{Location: "/", Request: r, Status: http.StatusSeeOther}
 }
 
-func viewMonitorHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func viewMonitorHandler(r *http.Request, params httprouter.Params) Page {
 	// TODO: fetch from real database.
 	monitors := makeMonitors()
-	tw := defaultTW.Configure(monitorViewTmpl, w)
+	tw := defaultTW.SetTemplate(monitorViewTmpl)
 	name := params.ByName("id")
 	monitorNotFoundErr := StatusError{
 		Status: 404, Message: "Monitor could not be found",
 	}
 
-	fmt.Println(name, len(monitors))
 	if id, err := strconv.Atoi(name); err != nil || id > len(monitors) {
 		fmt.Println(id)
-		tw = tw.SetError(monitorNotFoundErr)
+		return tw.SetError(monitorNotFoundErr)
 	} else {
-		fmt.Println(id, monitors[id])
-		tw = tw.SetTmplArgs(monitors[id])
+		return tw.SetTmplArgs(monitors[id])
 	}
-	tw.Execute()
+
 }

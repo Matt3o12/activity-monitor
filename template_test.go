@@ -123,12 +123,7 @@ func TestTemplateConfigure(t *testing.T) {
 	tw := TemplateWriter{ServerErrorHandler: nullHandler}
 
 	tmpl := nullTemplate{}
-	w := httptest.NewRecorder()
-	new := tw.Configure(&tmpl, w)
-
-	if new.Writer != w {
-		t.Errorf("Writer not updated by Configure")
-	}
+	new := tw.SetTemplate(&tmpl)
 
 	if new.Template == nil {
 		t.Errorf("Template not updated by Configure")
@@ -139,10 +134,6 @@ func TestTemplateConfigure(t *testing.T) {
 	new.ServerErrorHandler(nil, nil)
 	if !handlerCalled {
 		t.Errorf("ServerErrorHandler has unexpecedly been changed.")
-	}
-
-	if tw.Writer != nil {
-		t.Errorf("Original TemplateWriter has been changed by Configure")
 	}
 
 	if tw.Template != nil {
@@ -186,9 +177,9 @@ func TestTemplateWriterExecute(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	tmpl := &mockedTemplate{returnError: false}
 	tw := TemplateWriter{
-		ServerErrorHandler: nil, Writer: recorder, Template: tmpl,
+		ServerErrorHandler: nil, Template: tmpl,
 	}
-	ok := tw.SetStatusCode(301).SetTmplArgs("12542").Execute()
+	ok := tw.SetStatusCode(301).SetTmplArgs("12542").Execute(recorder)
 
 	if !ok {
 		t.Error("Execution expected to be ok")
@@ -209,11 +200,11 @@ func TestTemplateWriterExecuteError(t *testing.T) {
 	tmpl := &mockedTemplate{returnError: false}
 	recorder := httptest.NewRecorder()
 	tw := TemplateWriter{
-		ServerErrorHandler: nil, Writer: recorder, Template: tmpl,
+		ServerErrorHandler: nil, Template: tmpl,
 	}
 	msg := "Page 'test' could not be found"
 	httpErr := StatusError{Status: 404, Message: msg}
-	tw.Configure(tmpl, recorder).SetError(httpErr).Execute()
+	tw.SetTemplate(tmpl).SetError(httpErr).Execute(recorder)
 
 	if tmpl.called {
 		t.Errorf("Mocked template was not supposed to be called.")
