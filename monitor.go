@@ -2,6 +2,11 @@ package main
 
 import "time"
 
+// EventType contains information about the server's
+// state (like monitioring has been stated, or that
+// the server is up.
+// This status is saved in the Database table `monitor_logs`
+// as `Event`.
 type EventType uint8
 
 func (e EventType) getSafe(pos int) string {
@@ -12,14 +17,20 @@ func (e EventType) getSafe(pos int) string {
 	return eventToString[e][pos]
 }
 
+// String returns the EventName like this:
+// Monitor Created Event.
 func (e EventType) String() string {
 	return e.getSafe(0)
 }
 
+// FullName returns the full description of the event
+// such as "Montior has been created.
 func (e EventType) FullName() string {
 	return e.getSafe(1)
 }
 
+// ShortName returns the short description of the event
+// (such as Created or Started).
 func (e EventType) ShortName() string {
 	return e.getSafe(2)
 }
@@ -49,13 +60,29 @@ var eventToString = [][]string{
 }
 
 const (
+	// MonitorCreatedEvent indicates that the monitor
+	// has been created.
 	MonitorCreatedEvent EventType = iota
+
+	// MonitorPausedEvent indicated that the monitor
+	// has been paused.
 	MonitorPausedEvent
+
+	// MonitorStartedEvent indicated that monitroing
+	// has been started.
 	MonitorStartedEvent
+
+	// MonitorDownEvent indicates that the server
+	// being monitored is down.
 	MonitorDownEvent
+
+	// MonitorUpEvent indicates that the server is up.
 	MonitorUpEvent
 )
 
+// A Montior holds basic information about the server
+// being monitored such as the type, name and a reference
+// to all logs.
 type Monitor struct {
 	Id   int
 	Name string
@@ -63,6 +90,8 @@ type Monitor struct {
 	Logs []MonitorLog
 }
 
+// MonitorLog is a log entery for any EventType
+// that has occurred.
 type MonitorLog struct {
 	Id        int
 	Event     EventType
@@ -71,6 +100,9 @@ type MonitorLog struct {
 	Monitor   *Monitor
 }
 
+// SUpportedTypes is a slice with all monitoring
+// types such as pinging or checking for a word
+// in an http page.
 var SupportedTypes = []string{
 	"Socket", "http", "ping",
 }
