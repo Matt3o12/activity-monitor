@@ -78,6 +78,10 @@ const (
 
 	// MonitorUpEvent indicates that the server is up.
 	MonitorUpEvent
+
+	// MonitorMax is the monitor with the highest event number
+	// (currently MonitorUpEvent)
+	MontiorMax = MonitorUpEvent
 )
 
 // A Montior holds basic information about the server

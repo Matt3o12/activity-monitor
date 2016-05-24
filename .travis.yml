@@ -1,8 +1,23 @@
 language: go
+services: postgres
 
 go:
     - 1.5
     - tip
+
+before_script:
+    - psql -c 'create database travis_ci_test;' -U postgres
+    - |
+        cat << EOF > test.json 
+        {
+            "address": "localhost:5432",
+            "user": "postgres",
+            "password": "",
+            "ssl": false,
+            "database": "upchecker_test"
+        }
+        EOF
+
 
 matrix:
     allow_failures:

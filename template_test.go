@@ -221,3 +221,27 @@ func TestTemplateWriterExecuteError(t *testing.T) {
 		t.Errorf("%q not found in body: %q.", expected, b)
 	}
 }
+
+func assertNoError(t *testing.T, tw TemplateWriter) {
+	if tw.Err != nil {
+		t.Errorf("Did not expect tw to have an error, got: %v", tw.Err)
+	}
+}
+
+func assertError(t *testing.T, err error, tw TemplateWriter) {
+	if tw.Err != err {
+		t.Errorf("tw.Err => %v; wanted: %v", tw.Err, err)
+	}
+}
+
+func TestTemplateWriterSetError(t *testing.T) {
+	tw := TemplateWriter{}
+	assertNoError(t, tw)
+
+	tw = tw.SetError(nil)
+	assertNoError(t, tw)
+
+	testErr := NewDatabaseError(errors.New("test error"))
+	tw = tw.SetError(testErr)
+	assertError(t, testErr, tw)
+}

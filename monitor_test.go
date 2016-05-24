@@ -64,3 +64,27 @@ func TestEventTypeShortName(t *testing.T) {
 		}
 	}
 }
+
+func TestSomething(t *testing.T) {
+	t.SkipNow()
+	defer InitTestConnection(t)()
+	tx, err := db.Begin()
+
+	t.Log(err)
+	_, err = tx.Exec("SELECT * FROM monitors;i tesdfa")
+	t.Log(err)
+
+	_, err = tx.Exec("SELECT * FROM montior_logs;")
+	t.Log(err)
+
+	_, err = tx.Exec("SELECT * FROM montior_logs;")
+	t.Log(err)
+
+	_, err = tx.Exec("SELECT * FROM montior_logs;")
+	t.Log(err)
+
+	_, err = tx.Exec("SELECT * FROM montior_logs;")
+	t.Log(err)
+
+	t.Fail()
+}

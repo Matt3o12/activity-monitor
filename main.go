@@ -31,7 +31,7 @@ func main() {
 
 	// TODO: Add error 404 handler.
 	get("/", dashboardHandler)
-	get("/monitors/view/:id", viewMonitorHandler)
+	get("/monitors/view/:id/", viewMonitorHandler)
 	get("/monitors/add/", addMonitorGetHandler)
 	post("/monitors/add/", addMonitorPostHandler)
 

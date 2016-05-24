@@ -60,13 +60,13 @@ type TemplateWriter struct {
 	ServerErrorHandler ServerErrorHandler
 
 	// The HTTP Status Code
-	statusCode int
+	StatusCode int
 
 	// The error, if any occured
-	err HTTPError
+	Err HTTPError
 
 	// The args for executing the template
-	tmplArgs interface{}
+	TmplArgs interface{}
 }
 
 // SetTemplate returns a new TemplateWriter with the template.
@@ -78,8 +78,8 @@ func (w TemplateWriter) SetTemplate(tmpl Template) TemplateWriter {
 // SetError returns a new TemplateWriter with the given error.
 func (w TemplateWriter) SetError(err HTTPError) TemplateWriter {
 	if err != nil {
-		w.err = err
-		w.statusCode = err.HTTPStatus()
+		w.Err = err
+		w.StatusCode = err.HTTPStatus()
 	}
 
 	return w
@@ -87,14 +87,14 @@ func (w TemplateWriter) SetError(err HTTPError) TemplateWriter {
 
 // SetStatusCode returns a new TemplateWriter with the given status code.
 func (w TemplateWriter) SetStatusCode(code int) TemplateWriter {
-	w.statusCode = code
+	w.StatusCode = code
 
 	return w
 }
 
 // SetTmplArgs returns a new TemplateWriter with the given template args.
 func (w TemplateWriter) SetTmplArgs(args interface{}) TemplateWriter {
-	w.tmplArgs = args
+	w.TmplArgs = args
 
 	return w
 }
@@ -102,17 +102,17 @@ func (w TemplateWriter) SetTmplArgs(args interface{}) TemplateWriter {
 // Execute writes the template (and status code) or error (if set)
 // to the reponse writer.
 func (w TemplateWriter) Execute(httpWriter http.ResponseWriter) bool {
-	if w.err != nil {
-		return w.err.WriteToPage(httpWriter)
+	if w.Err != nil {
+		return w.Err.WriteToPage(httpWriter)
 	}
 
 	httpWriter.Header().Set("Content-Type", htmlContent)
-	if w.statusCode != 0 {
-		httpWriter.WriteHeader(w.statusCode)
+	if w.StatusCode != 0 {
+		httpWriter.WriteHeader(w.StatusCode)
 	}
 
 	tmpl := w.Template
-	err := tmpl.Execute(httpWriter, w.tmplArgs)
+	err := tmpl.Execute(httpWriter, w.TmplArgs)
 	if err != nil {
 		w.ServerErrorHandler(err, httpWriter)
 	}

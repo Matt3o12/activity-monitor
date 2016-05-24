@@ -3,5 +3,5 @@
 	"user": "username",
 	"password": "password",
 	"database": "database",
-	"ssl": true,
+	"ssl": true
 }

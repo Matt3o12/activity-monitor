@@ -58,3 +58,33 @@ func InitConnection() *pg.DB {
 
 	return pg.Connect(config.ToPGOptions())
 }
+
+// TransactionErrorHandler is used for dealing with
+// mutiple errors during a transaction without
+// checking for an error every time.
+type TransactionErrorHandler struct {
+	err HTTPError
+}
+
+// Err saves the error if err is not nil as a
+// DatabaseError. Make sure that the error is in
+// fact a database related error (i.e. it has been
+// returned by the pg library).
+// It returns itself so it can be chained.
+func (h *TransactionErrorHandler) Err(err error) *TransactionErrorHandler {
+	if h.err == nil {
+		h.err = NewDatabaseError(err)
+	}
+
+	return h
+}
+
+// FirstErr returns the first error to occur during
+// the transaction or nil if none has occurred.
+// When an error occurred during a database operation,
+// only the first one is relevant (the other ones will
+// most likely only state that the database has been
+// reset).
+func (h *TransactionErrorHandler) FirstErr() HTTPError {
+	return h.err
+}

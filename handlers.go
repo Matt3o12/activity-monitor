@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gorilla/schema"
 	"github.com/julienschmidt/httprouter"
@@ -92,7 +94,7 @@ func decodeForm(i interface{}, r *http.Request) error {
 	return formDecoder.Decode(i, r.Form)
 }
 
-func dashboardHandler(r *http.Request, _ httprouter.Params) Page {
+func dashboardHandler(_ *http.Request, _ httprouter.Params) Page {
 	tw := defaultTW.SetTemplate(indexTmpl)
 	monitors := []struct {
 		Id    int
@@ -128,16 +130,50 @@ func addMonitorGetHandler(_ *http.Request, _ httprouter.Params) Page {
 }
 
 func addMonitorPostHandler(r *http.Request, _ httprouter.Params) Page {
-	// TODO: actually save the monitor.
-	monitor := new(Monitor)
-	if err := decodeForm(monitor, r); err != nil {
-		// TODO: better input validat (which fields were invalid).
-		return getAddMonitorTemplate("Form data invaild. Please check input")
+	if err := r.ParseForm(); err != nil {
+		msg := "Form data invaild. Please check input."
+		return getAddMonitorTemplate(msg)
 	}
 
-	log.Printf("Created (mock) a new monitor: %q", monitor)
-	// TODO: redirect to newly created URL.
-	return Redirect{Location: "/", Request: r, Status: http.StatusSeeOther}
+	monitor := Monitor{}
+	monitor.Name = strings.TrimSpace(r.PostFormValue("name"))
+	if monitor.Name == "" {
+		return getAddMonitorTemplate("A name for the monitor is required.")
+	}
+
+	monitor.Type = r.PostFormValue("type") // TODO: Actually parse type
+	tx, err := db.Begin()
+	errHandler := TransactionErrorHandler{}
+	errHandler.Err(err)
+	if err == nil {
+		errHandler.Err(tx.Create(&monitor))
+		createdEvent := MonitorLog{
+			Event:     MonitorCreatedEvent,
+			Date:      time.Now(),
+			MonitorId: monitor.Id,
+		}
+
+		errHandler.Err(tx.Create(&createdEvent))
+		secondEvent := MonitorLog{
+			Event:     MonitorStartedEvent,
+			Date:      time.Now(),
+			MonitorId: monitor.Id,
+		}
+		if r.PostFormValue("paused") == "on" {
+			secondEvent.Event = MonitorPausedEvent
+		}
+
+		errHandler.Err(tx.Create(&secondEvent)).Err(tx.Commit())
+	}
+
+	if errHandler.FirstErr() == nil {
+		return Redirect{
+			Location: fmt.Sprintf("/monitors/view/%d/", monitor.Id),
+			Request:  r, Status: http.StatusSeeOther,
+		}
+	} else {
+		return defaultTW.SetError(errHandler.FirstErr())
+	}
 }
 
 func viewMonitorHandler(r *http.Request, params httprouter.Params) Page {
@@ -150,7 +186,6 @@ func viewMonitorHandler(r *http.Request, params httprouter.Params) Page {
 	}
 
 	if id, err := strconv.Atoi(name); err != nil || id > len(monitors) {
-		fmt.Println(id)
 		return tw.SetError(monitorNotFoundErr)
 	} else {
 		return tw.SetTmplArgs(monitors[id])
