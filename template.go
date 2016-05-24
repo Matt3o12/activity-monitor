@@ -24,6 +24,23 @@ type Template interface {
 	Execute(io.Writer, interface{}) error
 }
 
+// eagerTemplate is used when Debug is true.
+// It makes sure that the template is loaded
+// every time the page is refreshed (instead
+// of loading all template upfront).
+type eagerTemplate struct {
+	path []string
+}
+
+func (e *eagerTemplate) Execute(w io.Writer, args interface{}) error {
+	t, err := html.ParseFiles(e.path...)
+	if err != nil {
+		return err
+	}
+
+	return t.Execute(w, args)
+}
+
 // NewTemplate creates a new template with all necessary included
 func NewTemplate(path ...string) (Template, error) {
 	path = append(path, baseLayoutName)
@@ -34,7 +51,11 @@ func NewTemplate(path ...string) (Template, error) {
 // without the layout template loaded.
 func NewBareboneTemplate(path ...string) (Template, error) {
 	fixTemplateNames(path)
-	return html.ParseFiles(path...)
+	if Debug {
+		return &eagerTemplate{path}, nil
+	} else {
+		return html.ParseFiles(path...)
+	}
 }
 
 // Ensures that a template could be loaded. If not, a panic will
