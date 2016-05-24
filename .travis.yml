@@ -6,18 +6,16 @@ go:
     - tip
 
 before_script:
-    - psql -c 'create database travis_ci_test;' -U postgres
-    - |
+    - psql -c 'create database upchecker_test;' -U postgres
+    - >-
         cat << EOF > database-config.json
-        {
-            "address": "localhost:5432",
-            "user": "postgres",
-            "password": "",
-            "ssl": false,
-            "database": "upchecker_test"
-        }
-        EOF
-
+         {
+           "address": "localhost:5432",
+           "user": "postgres",
+           "password": "",
+           "ssl": false,
+           "database": "upchecker_test"
+         }
 
 matrix:
     allow_failures:
