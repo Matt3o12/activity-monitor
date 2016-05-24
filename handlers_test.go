@@ -9,8 +9,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 const ContentTypeURLEncoded = "application/x-www-form-urlencoded"
@@ -263,7 +266,7 @@ func TestAddMonitorPostHandlerErrorInvalidForm(t *testing.T) {
 
 func assertMonitor(t *testing.T, m Monitor, id int, n, mType string) {
 	if m.Name != n {
-		t.Errorf("Wanted montior n to be: %q, got: %q", n, m.Name)
+		t.Errorf("Wanted montior %v to be: %q, got: %q", id, n, m.Name)
 	}
 
 	if m.Id != id {
@@ -367,5 +370,66 @@ func TestAddMonitorPostHandler(t *testing.T) {
 
 	for _, row := range cases {
 		test(row)
+	}
+}
+
+func TestViewMonitorHandler(t *testing.T) {
+	defer InitTestConnection(t)()
+	type testcase struct {
+		id    int
+		name  string
+		mType string
+	}
+
+	cases := []testcase{
+		{1, "TCP/UDP Socket", "socket"},
+		{2, "HTTP(s) Server", "http"},
+		{3, "Main Server", "ping"},
+		{4, "Down server", "ping"},
+	}
+
+	for _, row := range cases {
+		params := httprouter.Params{{Key: "id", Value: strconv.Itoa(row.id)}}
+		tw := getTemplateWriter(t, viewMonitorHandler(nil, params))
+		if tw.Err != nil {
+			t.Errorf("TemplateWriter contains an error: %v", tw.Err)
+		} else {
+			monitor := tw.TmplArgs.(Monitor)
+			assertMonitor(t, monitor, row.id, row.name, row.mType)
+		}
+	}
+}
+
+func TestViewMonitorHandlerNotFound(t *testing.T) {
+	defer InitTestConnection(t)()
+	testcase := []string{"5", "abc", "foo", "Bar", "100", "-1", "6"}
+	for _, id := range testcase {
+		param := httprouter.Params{httprouter.Param{Key: "id", Value: id}}
+		tw := getTemplateWriter(t, viewMonitorHandler(nil, param))
+		if tw.Err == nil {
+			msg := "Expceted TemplateWriter to contain " +
+				"an error for id: %q. Got nil"
+			t.Errorf(msg, id)
+			continue
+		}
+
+		err, ok := tw.Err.(StatusError)
+		if !ok {
+			msg := "Expected TemplateWriter to contain a " +
+				"StatusError for id: %q, got: %v"
+			t.Errorf(msg, id, tw.Err)
+			continue
+		}
+
+		if err.HTTPStatus() != http.StatusNotFound {
+			msg := "Expected status code to be Not Found for id: %q, got: %v"
+			t.Errorf(msg, id, err.HTTPStatus)
+		}
+
+		expected := "Monitor could not be found"
+		if err.Message != expected {
+			msg := "Expected message to say: %q for id: %q, got: %q"
+			t.Errorf(msg, expected, id, err.Message)
+		}
 	}
 }

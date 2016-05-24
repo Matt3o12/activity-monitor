@@ -112,6 +112,7 @@ func (w TemplateWriter) Execute(httpWriter http.ResponseWriter) bool {
 	}
 
 	tmpl := w.Template
+	_ = "breakpoint"
 	err := tmpl.Execute(httpWriter, w.TmplArgs)
 	if err != nil {
 		w.ServerErrorHandler(err, httpWriter)

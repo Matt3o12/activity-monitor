@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/pg.v4"
+
 	"github.com/gorilla/schema"
 	"github.com/julienschmidt/httprouter"
 )
@@ -176,19 +178,23 @@ func addMonitorPostHandler(r *http.Request, _ httprouter.Params) Page {
 	}
 }
 
-func viewMonitorHandler(r *http.Request, params httprouter.Params) Page {
-	// TODO: fetch from real database.
-	monitors := makeMonitors()
-	tw := defaultTW.SetTemplate(monitorViewTmpl)
-	name := params.ByName("id")
-	monitorNotFoundErr := StatusError{
-		Status: 404, Message: "Monitor could not be found",
+func viewMonitorHandler(_ *http.Request, params httprouter.Params) Page {
+	id, err := strconv.Atoi(params.ByName("id"))
+	notFoundErr := defaultTW.SetError(StatusError{
+		Status:  http.StatusNotFound,
+		Message: "Monitor could not be found",
+	})
+
+	if err != nil {
+		return notFoundErr
 	}
 
-	if id, err := strconv.Atoi(name); err != nil || id > len(monitors) {
-		return tw.SetError(monitorNotFoundErr)
-	} else {
-		return tw.SetTmplArgs(monitors[id])
+	monitor := Monitor{Id: id}
+	if err := db.Select(&monitor); err == pg.ErrNoRows {
+		return notFoundErr
+	} else if err != nil {
+		return defaultTW.SetError(NewDatabaseError(err))
 	}
 
+	return defaultTW.SetTmplArgs(monitor).SetTemplate(monitorViewTmpl)
 }
