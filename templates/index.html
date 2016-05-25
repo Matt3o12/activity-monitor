@@ -51,7 +51,11 @@
 		  </td>
 
           <td class="stat">
-			  <a href="/monitors/view/{{$e.Id}}">{{$e.Event.ShortName}}</a>
+			  <a href="/monitors/view/{{$e.Id}}">
+				  <span style="color: {{$e.Event.CSSColor}}">
+					  {{$e.Event.ShortName}}
+				  </span>
+			  </a>
 		  </td>
           
 		  <td class="type">

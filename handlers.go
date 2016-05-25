@@ -189,11 +189,24 @@ func viewMonitorHandler(_ *http.Request, params httprouter.Params) Page {
 		return notFoundErr
 	}
 
+	tx, err := db.Begin()
+	dt := TransactionErrorHandler{}
+	if err != nil {
+		return defaultTW.SetError(dt.Err(err).FirstErr())
+	}
+
 	monitor := Monitor{Id: id}
-	if err := db.Select(&monitor); err == pg.ErrNoRows {
+	if err := tx.Select(&monitor); err == pg.ErrNoRows {
 		return notFoundErr
-	} else if err != nil {
-		return defaultTW.SetError(NewDatabaseError(err))
+	} else {
+		dt.Err(err)
+	}
+
+	dt.Err(tx.Model(&monitor.Logs).Where("monitor_id=?", id).
+		Limit(50).Order("date DESC").Select())
+
+	if dt.FirstErr() != nil {
+		return defaultTW.SetError(dt.FirstErr())
 	}
 
 	return defaultTW.SetTmplArgs(monitor).SetTemplate(monitorViewTmpl)

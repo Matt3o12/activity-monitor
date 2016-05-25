@@ -35,6 +35,19 @@ func (e EventType) ShortName() string {
 	return e.getSafe(2)
 }
 
+func (e EventType) CSSColor() string {
+	switch e {
+	case MonitorDownEvent:
+		return "red"
+
+	case MonitorUpEvent:
+		return "green"
+
+	default:
+		return "#FFC107"
+	}
+}
+
 var eventToString = [][]string{
 	{
 		"Monitor Created Event",

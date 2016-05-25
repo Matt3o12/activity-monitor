@@ -40,6 +40,7 @@ func LoadDatabaseConfig() (DatabaseConfig, error) {
 		User:     "postgres",
 		Database: "postgres",
 	}
+
 	content, err := ioutil.ReadFile(databaseConfigName)
 	if err != nil {
 		return config, err
@@ -56,7 +57,12 @@ func InitConnection() *pg.DB {
 		log.Printf("Error loading database config: %v", err)
 	}
 
-	return pg.Connect(config.ToPGOptions())
+	options := config.ToPGOptions()
+	if Debug {
+		options.IdleTimeout = 0
+	}
+
+	return pg.Connect(options)
 }
 
 // TransactionErrorHandler is used for dealing with

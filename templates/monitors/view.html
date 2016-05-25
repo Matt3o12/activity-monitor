@@ -5,10 +5,46 @@
 	{{.Name}}
 
 	{{/* Do real checking for the uptime.*/}}
-	Uknown
+	{{if gt (len .Logs) 0 }}
+		{{with (index .Logs 0).Event}}
+		<span style="color:{{.CSSColor}}">{{.ShortName}}</span>		
+		{{end}}
+	{{end}}
 </h1>
 
-	<img src="/static/monitor-example-graph.png" class="img-responsive" alt="Placeholder for upcoming uptime chart.">
+{{if gt (len .Logs) 0}}
+<img src="/static/monitor-example-graph.png" class="img-responsive" alt="Placeholder for upcoming uptime chart.">
+
+<br><br>
+
+<table class="table">
+	<tr>
+		<th>#</th>
+		<th>Event</th>
+		<td>Date</th>
+	</tr>
+
+	{{range $l := .Logs}}
+	<tr>
+		<td>{{$l.Id}}</td>
+		<td>{{$l.Event.FullName}}</td>
+		<td>{{$l.Date.Format "Jan 2, 2006 3:04:05 PM"}}</td>
+	</tr>
+	{{end}}
+</table>
+
+<p>
+	<span class="glyphicon glyphicon-floppy" aria-hidden="true"></span>
+	Export: 
+	<a href="/montiors/logs/{{.Id}}/export/format=json">JSON</a>, 
+	<a href="/montiors/logs/{{.Id}}/export/format=xml">XML</a>, 
+	<a href="/monitors/logs/{{.Id}}/export/format=csv">CSV</a>
+</p>
+{{else}}
+<p>
+	Error: There are no logs.
+</p>
+{{end}}
 
 {{end}}
 
