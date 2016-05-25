@@ -17,7 +17,7 @@ func InitTestConnection(t *testing.T) func() {
 	MarkLong(t)
 	dbBck := db
 	db = InitConnection()
-	_, err := db.Exec("SET search_path TO pg_temp")
+	_, err := db.Exec("SELECT set_config('search_path', 'pg_temp', false);")
 
 	deferFunc := func() {
 		err := db.Close()

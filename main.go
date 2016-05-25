@@ -11,7 +11,7 @@ import (
 
 var db *pg.DB
 
-const Debug = true // TODO: Make dynamic.
+var Debug = true // TODO: Make dynamic.
 
 func main() {
 	db = InitConnection()

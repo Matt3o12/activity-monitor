@@ -145,6 +145,8 @@ func addMonitorPostHandler(r *http.Request, _ httprouter.Params) Page {
 
 	monitor.Type = r.PostFormValue("type") // TODO: Actually parse type
 	tx, err := db.Begin()
+	defer tx.Rollback()
+
 	errHandler := TransactionErrorHandler{}
 	errHandler.Err(err)
 	if err == nil {
@@ -169,6 +171,7 @@ func addMonitorPostHandler(r *http.Request, _ httprouter.Params) Page {
 	}
 
 	if errHandler.FirstErr() == nil {
+		tx.Commit()
 		return Redirect{
 			Location: fmt.Sprintf("/monitors/view/%d/", monitor.Id),
 			Request:  r, Status: http.StatusSeeOther,
@@ -194,6 +197,7 @@ func viewMonitorHandler(_ *http.Request, params httprouter.Params) Page {
 	if err != nil {
 		return defaultTW.SetError(dt.Err(err).FirstErr())
 	}
+	defer tx.Rollback()
 
 	monitor := Monitor{Id: id}
 	if err := tx.Select(&monitor); err == pg.ErrNoRows {

@@ -408,8 +408,8 @@ func TestViewMonitorHandlerNotFound(t *testing.T) {
 		tw := getTemplateWriter(t, viewMonitorHandler(nil, param))
 		if tw.Err == nil {
 			msg := "Expceted TemplateWriter to contain " +
-				"an error for id: %q. Got nil"
-			t.Errorf(msg, id)
+				"an error for id: %q. TemplateWriter: %#v"
+			t.Errorf(msg, id, tw)
 			continue
 		}
 
