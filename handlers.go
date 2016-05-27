@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,12 +11,13 @@ import (
 
 	"gopkg.in/pg.v4"
 
-	"github.com/gorilla/schema"
 	"github.com/julienschmidt/httprouter"
 )
 
 const (
 	htmlContent = "text/html; charset=utf-8"
+	textContent = "text/plain; chatset=utf-8"
+	csvContent  = "text/csv; chatset=utf-8"
 )
 
 var (
@@ -25,7 +27,9 @@ var (
 
 	err404 = StatusError{Status: 404, Message: "Page could not be found"}
 
-	formDecoder = schema.NewDecoder()
+	supportedExportFormats   = []string{"xml", "json", "csv"}
+	exportFormatNotSupported = []byte("Export format is not supported.")
+	exportIdNotAnInterger    = []byte("ID needs to be an integer.")
 )
 
 // All template related variables.
@@ -86,14 +90,6 @@ func handleServerError(org error, w http.ResponseWriter) {
 		_, _ = w.Write(err500TemplateNotExecuting)
 		log.Println("Error while executing template.", err)
 	}
-}
-
-func decodeForm(i interface{}, r *http.Request) error {
-	if err := r.ParseForm(); err != nil {
-		return err
-	}
-
-	return formDecoder.Decode(i, r.Form)
 }
 
 func dashboardHandler(_ *http.Request, _ httprouter.Params) Page {
@@ -214,4 +210,47 @@ func viewMonitorHandler(_ *http.Request, params httprouter.Params) Page {
 	}
 
 	return defaultTW.SetTmplArgs(monitor).SetTemplate(monitorViewTmpl)
+}
+
+func exportLogsHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	validFormat := false
+	format := strings.ToLower(r.URL.Query().Get("format"))
+	for _, supported := range supportedExportFormats {
+		if format == supported {
+			validFormat = true
+		}
+	}
+
+	monitorID, err := strconv.Atoi(params.ByName("id"))
+	if !validFormat || err != nil {
+		w.Header().Set("Content-Type", textContent)
+		w.WriteHeader(422) // 422: Unprocessable Entity
+		if !validFormat {
+			w.Write(exportFormatNotSupported)
+		} else {
+			w.Write(exportIdNotAnInterger)
+		}
+		return
+	}
+
+	logs := []MonitorLog{}
+	dbErr := NewDatabaseError(db.Model(&logs).Column("id", "date", "event").
+		Where("monitor_id=?", monitorID).Limit(5000).
+		Order("date DESC").Select())
+
+	if dbErr != nil {
+		dbErr.WriteToPage(w)
+	}
+	w.Header().Set("Content-Type", textContent) // TODO: change to json
+	w.Header().Set("Content-Disposition", "inline; filename=\"test12.csv\"")
+
+	csvWriter := csv.NewWriter(w)
+	for _, row := range logs {
+		csvWriter.Write([]string{
+			strconv.Itoa(row.Id),
+			row.Event.String(),
+			row.Date.Format(time.RFC3339),
+		})
+	}
+	csvWriter.Flush()
 }

@@ -37,6 +37,10 @@ func main() {
 	get("/monitors/add/", addMonitorGetHandler)
 	post("/monitors/add/", addMonitorPostHandler)
 
+	// Since exportLogsHandler has to do bulk writes,
+	// we need to expose the writer directly.
+	mux.GET("/monitors/logs/:id/export", exportLogsHandler)
+
 	server := &http.Server{Addr: ":8092", Handler: mux}
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Couldn't open http server: %v.\n", err)

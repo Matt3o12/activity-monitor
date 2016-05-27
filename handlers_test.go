@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -24,6 +25,16 @@ func shutupLog() func() {
 		log.SetOutput(os.Stderr)
 	}
 }
+
+func MustRequest(t *testing.T, m, u string, body io.Reader) *http.Request {
+	r, err := http.NewRequest(m, u, body)
+	if err != nil {
+		t.Fatalf("Could not construct request: %v", err)
+	}
+
+	return r
+}
+
 func newRequest(t *testing.T, method, url string) *http.Request {
 	if req, err := http.NewRequest(method, url, nil); err != nil {
 		t.Fatalf("Could not construct request: %q.", err)
@@ -107,10 +118,7 @@ func TestRedirect(t *testing.T) {
 
 	for _, row := range testcase {
 		recorder := httptest.NewRecorder()
-		request, err := http.NewRequest("GET", "http://localhost/post", nil)
-		if err != nil {
-			t.Fatalf("Could not construct request: %v", err)
-		}
+		request := MustRequest(t, "GET", "http://localhost/post", nil)
 		redirect := Redirect{
 			Location: row.Location,
 			Status:   row.Status,
@@ -242,11 +250,7 @@ func TestAddMonitorPostHandlerErrorNoName(t *testing.T) {
 	data.Set("type", "ping")
 	data.Set("paused", "on")
 
-	body := strings.NewReader(data.Encode())
-	r, err := http.NewRequest("POST", "", body)
-	if err != nil {
-		t.Fatalf("Could not construct request: %v", err)
-	}
+	r := MustRequest(t, "POST", "", strings.NewReader(data.Encode()))
 	r.Header.Set("Content-Type", ContentTypeURLEncoded)
 
 	tw := getTemplateWriter(t, addMonitorPostHandler(r, nil))
@@ -255,11 +259,8 @@ func TestAddMonitorPostHandlerErrorNoName(t *testing.T) {
 
 func TestAddMonitorPostHandlerErrorInvalidForm(t *testing.T) {
 	defer InitTestConnection(t)()
-	r, err := http.NewRequest("POST", "", strings.NewReader("%"))
+	r := MustRequest(t, "POST", "", strings.NewReader("%"))
 	r.Header.Set("Content-Type", ContentTypeURLEncoded)
-	if err != nil {
-		t.Fatalf("Could not construct request: %v", r)
-	}
 	tw := getTemplateWriter(t, addMonitorPostHandler(r, nil))
 	assertAddMonitorErrMsg(t, tw, "Form data invaild. Please check input.")
 }
@@ -300,13 +301,8 @@ func TestAddMonitorPostHandler(t *testing.T) {
 		form.Set("type", row.mType)
 		form.Set("paused", paused2str(row.paused))
 
-		r, err := http.NewRequest("POST", "", strings.NewReader(form.Encode()))
+		r := MustRequest(t, "POST", "", strings.NewReader(form.Encode()))
 		r.Header.Set("Content-Type", ContentTypeURLEncoded)
-		if err != nil {
-			t.Errorf("Could not construct request: %v", err)
-			return
-		}
-
 		page := addMonitorPostHandler(r, nil)
 		redirect, ok := page.(Redirect)
 		if !ok {
@@ -325,7 +321,7 @@ func TestAddMonitorPostHandler(t *testing.T) {
 		}
 
 		monitor := Monitor{Id: mId}
-		err = db.Select(&monitor)
+		err := db.Select(&monitor)
 		if err != nil {
 			t.Errorf("Could not fetch monitor from database: %v", err)
 			return
@@ -432,4 +428,53 @@ func TestViewMonitorHandlerNotFound(t *testing.T) {
 			t.Errorf(msg, expected, id, err.Message)
 		}
 	}
+}
+
+func exportLogsAssertRecorder(t *testing.T, recorder *httptest.ResponseRecorder, code int, contentType, body string) {
+	if recorder.Code != code {
+		t.Errorf("Expected to record code: %v, got: %v", code, recorder.Code)
+	}
+
+	if ct := recorder.HeaderMap.Get("Content-Type"); ct != textContent {
+		t.Errorf("Wanted content type %q; got: %q", contentType, ct)
+	}
+
+	if b := recorder.Body.String(); b != body {
+		t.Errorf("Wanted body: %q, got: %q", body, b)
+	}
+}
+
+func exportLogsAssertInvalid(t *testing.T, format, body, id string) {
+	defer InitTestConnection(t)()
+	request := MustRequest(t, "GET", fmt.Sprintf("?format=%v", format), nil)
+	recorder := httptest.NewRecorder()
+	params := httprouter.Params{{Key: "id", Value: id}}
+	exportLogsHandler(recorder, request, params)
+
+	exportLogsAssertRecorder(t, recorder, 422, textContent, body)
+}
+
+func TestMontiorLogsExportInvalidFormat(t *testing.T) {
+	exportLogsAssertInvalid(t, "invalid", string(exportFormatNotSupported), "1")
+}
+
+func TestMontiorLogsExportInvalidId(t *testing.T) {
+	exportLogsAssertInvalid(t, "csv", string(exportIdNotAnInterger), "invalid")
+}
+
+func TestMonitorLogsExportCSV(t *testing.T) {
+	defer InitTestConnection(t)()
+	request := MustRequest(t, "GET", "?format=json", nil)
+	recorder := httptest.NewRecorder()
+	params := httprouter.Params{{Key: "id", Value: "1"}}
+	exportLogsHandler(recorder, request, params)
+
+	body := `7,Monitor Up Event,2016-05-22T01:16:29Z
+6,Monitor Down Event,2016-05-22T01:13:20Z
+2,Monitor Up Event,2016-05-21T19:23:36Z
+1,Monitor Created Event,2016-05-21T19:23:12Z
+`
+
+	// TODO: Replace textContent with CSV content
+	exportLogsAssertRecorder(t, recorder, http.StatusOK, textContent, body)
 }
