@@ -435,7 +435,7 @@ func exportLogsAssertRecorder(t *testing.T, recorder *httptest.ResponseRecorder,
 		t.Errorf("Expected to record code: %v, got: %v", code, recorder.Code)
 	}
 
-	if ct := recorder.HeaderMap.Get("Content-Type"); ct != textContent {
+	if ct := recorder.HeaderMap.Get("Content-Type"); ct != contentType {
 		t.Errorf("Wanted content type %q; got: %q", contentType, ct)
 	}
 
@@ -464,17 +464,29 @@ func TestMontiorLogsExportInvalidId(t *testing.T) {
 
 func TestMonitorLogsExportCSV(t *testing.T) {
 	defer InitTestConnection(t)()
-	request := MustRequest(t, "GET", "?format=json", nil)
-	recorder := httptest.NewRecorder()
-	params := httprouter.Params{{Key: "id", Value: "1"}}
-	exportLogsHandler(recorder, request, params)
+	testcase := []struct {
+		id        string
+		bodyParts []string
+	}{
+		{"1", []string{
+			"7,Monitor Up Event,2016-05-22T01:16:29Z",
+			"6,Monitor Down Event,2016-05-22T01:13:20Z",
+			"2,Monitor Up Event,2016-05-21T19:23:36Z",
+			"1,Monitor Created Event,2016-05-21T19:23:12Z",
+		}},
+		{"2", []string{"3,Monitor Up Event,2016-05-22T00:32:10Z\n"}},
+		{"3", []string{"4,Monitor Up Event,2016-05-22T00:32:12Z\n"}},
+		{"4", []string{"5,Monitor Down Event,2016-05-22T00:32:18Z\n"}},
+	}
 
-	body := `7,Monitor Up Event,2016-05-22T01:16:29Z
-6,Monitor Down Event,2016-05-22T01:13:20Z
-2,Monitor Up Event,2016-05-21T19:23:36Z
-1,Monitor Created Event,2016-05-21T19:23:12Z
-`
+	for _, row := range testcase {
+		request := MustRequest(t, "GET", "?format=json", nil)
+		recorder := httptest.NewRecorder()
+		params := httprouter.Params{{Key: "id", Value: row.id}}
+		exportLogsHandler(recorder, request, params)
 
-	// TODO: Replace textContent with CSV content
-	exportLogsAssertRecorder(t, recorder, http.StatusOK, textContent, body)
+		body := strings.TrimSpace(strings.Join(row.bodyParts, "\n")) + "\n"
+		exportLogsAssertRecorder(t, recorder, http.StatusOK, csvContent, body)
+	}
+
 }

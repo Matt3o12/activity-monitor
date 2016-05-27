@@ -241,7 +241,7 @@ func exportLogsHandler(w http.ResponseWriter, r *http.Request, params httprouter
 	if dbErr != nil {
 		dbErr.WriteToPage(w)
 	}
-	w.Header().Set("Content-Type", textContent) // TODO: change to json
+	w.Header().Set("Content-Type", csvContent)
 	w.Header().Set("Content-Disposition", "inline; filename=\"test12.csv\"")
 
 	csvWriter := csv.NewWriter(w)
