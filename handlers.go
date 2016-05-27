@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,8 +17,9 @@ import (
 
 const (
 	htmlContent = "text/html; charset=utf-8"
-	textContent = "text/plain; chatset=utf-8"
-	csvContent  = "text/csv; chatset=utf-8"
+	textContent = "text/plain; charset=utf-8"
+	csvContent  = "text/csv; charset=utf-8"
+	jsonContent = "application/json; charset=utf-8"
 )
 
 var (
@@ -27,7 +29,6 @@ var (
 
 	err404 = StatusError{Status: 404, Message: "Page could not be found"}
 
-	supportedExportFormats   = []string{"xml", "json", "csv"}
 	exportFormatNotSupported = []byte("Export format is not supported.")
 	exportIdNotAnInterger    = []byte("ID needs to be an integer.")
 )
@@ -212,24 +213,69 @@ func viewMonitorHandler(_ *http.Request, params httprouter.Params) Page {
 	return defaultTW.SetTmplArgs(monitor).SetTemplate(monitorViewTmpl)
 }
 
-func exportLogsHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	validFormat := false
-	format := strings.ToLower(r.URL.Query().Get("format"))
-	for _, supported := range supportedExportFormats {
-		if format == supported {
-			validFormat = true
+func exportLogsHandlerCSV(w http.ResponseWriter, logs []MonitorLog) {
+	w.Header().Set("Content-Type", csvContent)
+
+	csvWriter := csv.NewWriter(w)
+	showErr := func(err error) bool {
+		if err != nil {
+			w.Write([]byte("Error while encoding: " + err.Error()))
+		}
+
+		return err != nil
+	}
+
+	for _, row := range logs {
+		err := showErr(csvWriter.Write([]string{
+			strconv.Itoa(row.Id),
+			row.Event.String(),
+			row.Date.Format(time.RFC3339),
+		}))
+
+		if err {
+			return
 		}
 	}
 
-	monitorID, err := strconv.Atoi(params.ByName("id"))
-	if !validFormat || err != nil {
+	if !showErr(csvWriter.Error()) {
+		csvWriter.Flush()
+	}
+}
+
+func exportLogsHandlerJSON(w http.ResponseWriter, logs []MonitorLog) {
+	w.Header().Set("Content-Type", jsonContent)
+
+	type exported struct {
+		Id    int    `json:"id"`
+		Event string `json:"event_name"`
+		Date  string `json:"date"`
+	}
+
+	encoder := json.NewEncoder(w)
+	for _, entity := range logs {
+		data := exported{
+			entity.Id,
+			entity.Event.String(),
+			entity.Date.Format(time.RFC3339),
+		}
+
+		if err := encoder.Encode(data); err != nil {
+			w.Write([]byte("Error while encoding: " + err.Error()))
+			return
+		}
+	}
+}
+
+func exportLogsHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	unprocessabkeEntity := func(msg []byte) {
 		w.Header().Set("Content-Type", textContent)
 		w.WriteHeader(422) // 422: Unprocessable Entity
-		if !validFormat {
-			w.Write(exportFormatNotSupported)
-		} else {
-			w.Write(exportIdNotAnInterger)
-		}
+		w.Write(msg)
+	}
+
+	monitorID, err := strconv.Atoi(params.ByName("id"))
+	if err != nil {
+		unprocessabkeEntity(exportIdNotAnInterger)
 		return
 	}
 
@@ -241,16 +287,22 @@ func exportLogsHandler(w http.ResponseWriter, r *http.Request, params httprouter
 	if dbErr != nil {
 		dbErr.WriteToPage(w)
 	}
-	w.Header().Set("Content-Type", csvContent)
-	w.Header().Set("Content-Disposition", "inline; filename=\"test12.csv\"")
 
-	csvWriter := csv.NewWriter(w)
-	for _, row := range logs {
-		csvWriter.Write([]string{
-			strconv.Itoa(row.Id),
-			row.Event.String(),
-			row.Date.Format(time.RFC3339),
-		})
+	sendContentDisposition := func(f string) {
+		s := fmt.Sprintf("attachment; filename=\"monitor_%v.%v\"", monitorID, f)
+		w.Header().Set("Content-Disposition", s)
 	}
-	csvWriter.Flush()
+	switch r.URL.Query().Get("format") {
+	case "csv":
+		sendContentDisposition("csv")
+		exportLogsHandlerCSV(w, logs)
+
+	case "json":
+		sendContentDisposition("json")
+		exportLogsHandlerJSON(w, logs)
+
+	default:
+		unprocessabkeEntity(exportFormatNotSupported)
+	}
+
 }

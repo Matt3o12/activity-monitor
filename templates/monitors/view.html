@@ -37,7 +37,10 @@
 	<span class="glyphicon glyphicon-floppy" aria-hidden="true"></span>
 	Export: 
 	<a href="/montiors/logs/{{.Id}}/export?format=json">JSON</a>, 
+	<!-- 
+	TODO: Add xml support
 	<a href="/montiors/logs/{{.Id}}/export?format=xml">XML</a>, 
+	--!>
 	<a href="/monitors/logs/{{.Id}}/export?format=csv">CSV</a>
 </p>
 {{else}}

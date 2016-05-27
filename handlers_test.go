@@ -440,7 +440,7 @@ func exportLogsAssertRecorder(t *testing.T, recorder *httptest.ResponseRecorder,
 	}
 
 	if b := recorder.Body.String(); b != body {
-		t.Errorf("Wanted body: %q, got: %q", body, b)
+		t.Errorf("Wanted body: %v, got: %v", body, b)
 	}
 }
 
@@ -480,7 +480,7 @@ func TestMonitorLogsExportCSV(t *testing.T) {
 	}
 
 	for _, row := range testcase {
-		request := MustRequest(t, "GET", "?format=json", nil)
+		request := MustRequest(t, "GET", "?format=csv", nil)
 		recorder := httptest.NewRecorder()
 		params := httprouter.Params{{Key: "id", Value: row.id}}
 		exportLogsHandler(recorder, request, params)
@@ -489,4 +489,33 @@ func TestMonitorLogsExportCSV(t *testing.T) {
 		exportLogsAssertRecorder(t, recorder, http.StatusOK, csvContent, body)
 	}
 
+}
+
+func TestMonitorLogsExportJSON(t *testing.T) {
+	defer InitTestConnection(t)()
+
+	testcase := []struct {
+		id        string
+		bodyParts []string
+	}{
+		{"1", []string{
+			`{"id":7,"event_name":"Monitor Up Event","date":"2016-05-22T01:16:29Z"}`,
+			`{"id":6,"event_name":"Monitor Down Event","date":"2016-05-22T01:13:20Z"}`,
+			`{"id":2,"event_name":"Monitor Up Event","date":"2016-05-21T19:23:36Z"}`,
+			`{"id":1,"event_name":"Monitor Created Event","date":"2016-05-21T19:23:12Z"}`,
+		}},
+		{"2", []string{`{"id":3,"event_name":"Monitor Up Event","date":"2016-05-22T00:32:10Z"}`}},
+		{"3", []string{`{"id":4,"event_name":"Monitor Up Event","date":"2016-05-22T00:32:12Z"}`}},
+		{"4", []string{`{"id":5,"event_name":"Monitor Down Event","date":"2016-05-22T00:32:18Z"}`}},
+	}
+
+	for _, row := range testcase {
+		request := MustRequest(t, "GET", "?format=json", nil)
+		recorder := httptest.NewRecorder()
+		params := httprouter.Params{{Key: "id", Value: row.id}}
+		body := strings.TrimSpace(strings.Join(row.bodyParts, "\n")) + "\n"
+
+		exportLogsHandler(recorder, request, params)
+		exportLogsAssertRecorder(t, recorder, http.StatusOK, jsonContent, body)
+	}
 }
